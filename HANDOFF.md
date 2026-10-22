@@ -19,7 +19,7 @@
 - PR #1 includes an original in-memory Node prototype and project docs; prior GitHub CI test run passed 8 Node tests (https://github.com/mrAibo/WEG_HomeManager/actions/runs/39757712537).
 - This session added canonical project/status/UX/vendor/reuse documents and agent instructions to same draft PR branch (inspect changed files).
 - **Not done:** HaVeWa source import, real UI, operational AI, OCR, vendor search or integration, accounting/legal validation, deployment.
-- Existing development issues [#2](https://github.com/mrAibo/WEG_HomeManager/issues/2)–[#6](https://github.com/mrAibo/WEG_HomeManager/issues/6) cover upstream, case workflows, scans, vendors and accounting.
+- Existing development issues [#2](https://github.com/mrAibo/WEG_HomeManager/issues/2)–[#6](https://github.com/mrAibo/WEG_HomeManager/issues/6) cover upstream, case workflows, scans, vendors and accounting. Newly created [#7](https://github.com/mrAibo/WEG_HomeManager/issues/7) covers dashboard/a11y and [#8](https://github.com/mrAibo/WEG_HomeManager/issues/8) covers MyHammer manual handoff.
 
 ## How to continue (do not ask user to repeat decisions)
 1. `git fetch origin`; inspect `main`, `feature/ai-first-foundation`, PR #1 and newer commits. Do NOT assume old SHA is latest.
