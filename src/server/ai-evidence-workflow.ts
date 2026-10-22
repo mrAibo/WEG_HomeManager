@@ -6,6 +6,7 @@ import {
   evidenceHash, identifyEvidence, safeEvidenceName, MAX_EVIDENCE_SIZE,
 } from "@/lib/ai-evidence-policy";
 import { saveFile, deleteFile } from "@/lib/storage";
+import { inspectEvidence, UnsafeEvidenceError } from "@/lib/ai-evidence-inspection";
 import { CaseWorkflowError } from "@/lib/ai-case-errors";
 import { MAX_CASE_EVIDENCE } from "@/server/ai-evidence-snapshot";
 import type { CaseActor } from "@/server/ai-case-workflow";
@@ -25,6 +26,14 @@ export async function addCaseEvidence(
   const format = identifyEvidence(buffer);
   if (!format) {
     throw new CaseWorkflowError("Nur PDF, JPG und PNG mit gültiger Dateisignatur zulässig.");
+  }
+  try {
+    await inspectEvidence(buffer, format);
+  } catch (error) {
+    if (error instanceof UnsafeEvidenceError) {
+      throw new CaseWorkflowError("Datei vor Speicherung abgewiesen: " + error.message);
+    }
+    throw new CaseWorkflowError("Dateiprüfung fehlgeschlagen. Keine Datei gespeichert.");
   }
   const name = safeEvidenceName(originalName, format.ext);
   const sha256 = evidenceHash(buffer);

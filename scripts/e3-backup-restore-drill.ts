@@ -10,6 +10,7 @@
  * It is NOT a production backup scheduler or an online-consistent backup method.
  */
 import crypto from "node:crypto";
+import { PDFDocument } from "pdf-lib";
 import { execFileSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import net from "node:net";
@@ -110,7 +111,7 @@ async function main() {
   const dumpOnHost = path.join(scratch, "db.dump");
   const restoredFolder = path.join(scratch, "restored-documents");
   const copiedFolder = path.join(scratch, "saved-documents");
-  const fixture = Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
+  const fixture = Buffer.from(await (async () => { const pdf = await PDFDocument.create(); pdf.addPage([300, 300]); return pdf.save(); })());
   let createdId: string | undefined;
   let evidenceKey: string | undefined;
   let restoredDb: PrismaClient | undefined;

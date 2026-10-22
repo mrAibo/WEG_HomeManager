@@ -1,5 +1,6 @@
 // Browser/DB/Storage smoke on synthetic localhost only. No secrets or sample files in Git.
 import { chromium } from "playwright";
+import { PDFDocument } from "pdf-lib";
 import { PrismaClient } from "@prisma/client";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -18,7 +19,7 @@ if (!["127.0.0.1", "localhost"].includes(database.hostname) ||
   throw new Error("Refusing nonlocal database");
 }
 
-const buffer = Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
+const buffer = Buffer.from(await (async () => { const pdf = await PDFDocument.create(); pdf.addPage([300, 300]); return pdf.save(); })());
 const digest = crypto.createHash("sha256").update(buffer).digest("hex");
 const prisma = new PrismaClient();
 const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -67,11 +68,11 @@ try {
   if (download.status() !== 200 || !(await download.body()).equals(buffer)) {
     throw new Error("Browser authorized download mismatch");
   }
-  const secondFile = Buffer.from("%PDF-1.4\nSecond synthetic item\n%%EOF\n");
+  const secondFile = Buffer.from(await (async () => { const pdf = await PDFDocument.create(); pdf.addPage([600, 600]); return pdf.save(); })());
   await page.getByLabel("Beweismittel auswählen").setInputFiles({
     name: "Zweite-Anlage.pdf", mimeType: "application/pdf", buffer: secondFile,
   });
-  await page.getByRole("button", { name: "Datei sicher hinzufügen" }).click();
+  await page.getByRole("button", { name: "Datei hinzufügen" }).click();
   await page.getByRole("heading", { name: "Beweismittel (2)" }).waitFor();
   const secondHash = crypto.createHash("sha256").update(secondFile).digest("hex");
   const secondEvidence = await prisma.aiEvidence.findFirst({
@@ -86,7 +87,7 @@ try {
   if (noAccess.status() !== 401) throw new Error("Unauthenticated download allowed");
   await page.getByRole("button", { name: "Zur Prüfung einreichen" }).click();
   await page.getByText("Zur Prüfung eingereicht", { exact: false }).first().waitFor();
-  if (await page.getByRole("button", { name: "Datei sicher hinzufügen" }).count()) {
+  if (await page.getByRole("button", { name: "Datei hinzufügen" }).count()) {
     throw new Error("Evidence upload should be hidden after submission");
   }
   await page.setViewportSize({ width: 360, height: 800 });

@@ -2,12 +2,20 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E3 coordinated PostgreSQL + Evidence file-store backup/restore safety drill on isolated synthetic data. OCR/LLM/external actions remain disabled.
+**Current focus:** E3 conservative pre-storage PDF/JPEG/PNG structural inspection. Synthetic-only; no malware scanner, OCR, LLM or external actions.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `feature/e3-backup-restore-drill` (stacked on Evidence snapshot PR #17, Evidence PR #16 and earlier Draft chain).
+**Branch:** `feature/e3-evidence-structural-validation` (stacked on backup/restore PR #18 and previous Draft PRs).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E3 pre-storage Evidence structural inspection (2026-10-22)
+- Started clean from `feature/e3-backup-restore-drill` HEAD `36f93b5d5e6d258455566e9e29cfa3edbe54f471`; #18 last Linux CI SUCCESS and no upstream HaVeWa changes. No merges.
+- `src/lib/ai-evidence-inspection.ts` is invoked inside `addCaseEvidence` **before** `saveFile`, following tenant/role and MIME/size checks. Rejects malformed/encrypted/active PDF using existing `pdf-lib`, CRC-invalid/oversized PNG (plus unsupported metadata), and malformed JPEG outer markers or excessive declared dimensions. No extra npm dependencies, no DB migration, no model/tool writes.
+- Rejected bytes are **not persisted**; no fake quarantine or malware clearance is claimed. Aibo has **no ClamAV**. Conservative PDF policy may reject legitimate forms/encrypted PDFs; PNG text/color-profile extensions are unsupported; JPEG entropy and PNG image pixels are not decoded. In-process PDF parsing itself still needs a sandbox before production. UI explicitly warns that files are NOT virus-scanned and permits only synthetic test files.
+- `src/lib/ai-evidence-inspection.test.ts`: **11 new structural/negative tests**, including genuine pdf-lib PDF, active PDF catalog action, CRC tamper, PNG text injection and excess image dimensions. Existing synthetic DB, snapshot, browser and backup scripts now use genuine `pdf-lib` PDFs rather than pseudo PDF header+EOF fixtures. DB smoke ensures header-only fake PDF does not produce an Evidence record.
+- Full `npm test` **273 PASS / 1 SKIP**, TypeScript, scoped ESLint and production build PASS; local synthetic Evidence DB smoke, Evidence snapshot tamper DB smoke, coordinated PostgreSQL+Evidence scratch restore, and both actual Chrome scripts PASS (including 360px mobile/tenant download constraints). Local Next.js restarted on loopback.
+- `docs/weg-homemanager/EVIDENCE_INGEST_SECURITY.md` explicitly lists limits and release gates: true AV/quarantine fail-closed scanner, sandbox and malicious corpus, GDPR retention, per-tenant quotas, and REST Bearer P0 #11. This increment is **not** production ready.
 
 ## E3 coordinated backup/recovery DRILL (2026-10-22)
 - Started from **clean** Evidence snapshot HEAD `896629a489cb828a8ee819447093ca431cea5060` on Aibo. PR #17 GitHub Linux CI 39813824764 **SUCCESS**, upstream HaVeWa unchanged, no merge to main.

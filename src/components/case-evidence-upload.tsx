@@ -45,7 +45,9 @@ export function CaseEvidenceUpload({ caseId }: { caseId: string }) {
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
         PDF, JPG oder PNG bis 10 MB. Die unveränderten Datei-Bytes werden intern
-        gespeichert und mit SHA-256 dokumentiert. Noch keine OCR- oder KI-Auswertung.
+        gespeichert und mit SHA-256 dokumentiert. Formatprüfung vor Speicherung,
+        aber noch kein Virenscanner. Nur synthetische Testdateien verwenden.
+        Keine OCR- oder KI-Auswertung.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <input ref={input} type="file" accept=".pdf,image/jpeg,image/png"
@@ -57,7 +59,7 @@ export function CaseEvidenceUpload({ caseId }: { caseId: string }) {
             setMessage("");
           }}/>
         <Button type="button" onClick={upload} disabled={!file || saving}>
-          <Upload className="size-4" /> {saving ? "Datei wird gespeichert ..." : "Datei sicher hinzufügen"}
+          <Upload className="size-4" /> {saving ? "Datei wird gespeichert ..." : "Datei hinzufügen"}
         </Button>
       </div>
       {file && <p className="text-xs text-muted-foreground">

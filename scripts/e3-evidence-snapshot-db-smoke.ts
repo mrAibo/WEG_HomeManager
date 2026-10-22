@@ -1,5 +1,6 @@
 // Local, synthetic-only integrity test. Never targets production.
 import { promises as fs } from "node:fs";
+import { PDFDocument } from "pdf-lib";
 import path from "node:path";
 import { prisma } from "../src/lib/prisma";
 import { createLocalCase, submitLocalProposal, approveLocalCopy, getApprovedLocalCopy } from "../src/server/ai-case-workflow";
@@ -30,7 +31,7 @@ async function main() {
   });
   assert(admin, "Synthetic manager required");
   const actor = { id: admin.id, tenantId: tenant.id, role: admin.role };
-  const source = Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
+  const source = Buffer.from(await (async () => { const pdf = await PDFDocument.create(); pdf.addPage([300, 300]); return pdf.save(); })());
   let createdCase: string | null = null;
   let key: string | null = null;
   try {

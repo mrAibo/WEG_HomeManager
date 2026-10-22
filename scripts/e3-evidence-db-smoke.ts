@@ -1,4 +1,5 @@
 // Synthetic local DB + storage integration. No real WEG data. Removes its own file and rows.
+import { PDFDocument } from "pdf-lib";
 import { prisma } from "../src/lib/prisma";
 import { createLocalCase, submitLocalProposal } from "../src/server/ai-case-workflow";
 import { addCaseEvidence } from "../src/server/ai-evidence-workflow";
@@ -30,7 +31,7 @@ async function main() {
   });
   assert(user, "Synthetic ADMIN missing");
   const actor = { id: user.id, tenantId: tenant.id, role: user.role };
-  const file = Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n");
+  const file = Buffer.from(await (async () => { const pdf = await PDFDocument.create(); pdf.addPage([300, 300]); return pdf.save(); })());
 
   let caseId: string | null = null;
   let storageKey: string | null = null;
@@ -50,6 +51,11 @@ async function main() {
       "Non-manager");
     await rejects(() => addCaseEvidence(actor, created.caseId, "script.pdf",
       Buffer.from("<script>alert(1)</script>")), "Script data");
+    await rejects(() => addCaseEvidence(actor, created.caseId, "fake.pdf",
+      Buffer.from("%PDF-1.4\\n1 0 obj\\n%%EOF\\n")), "Header-only fake PDF");
+    assert(await prisma.aiEvidence.count({
+      where: { tenantId: actor.tenantId, caseId: created.caseId },
+    }) === 0, "Invalid evidence must never reach the database");
 
     const evidence = await addCaseEvidence(actor, created.caseId, "../Synthetisch.pdf", file);
     assert(evidence.mime === "application/pdf" && evidence.sha256 === evidenceHash(file),
@@ -68,8 +74,11 @@ async function main() {
       "Exactly one audit event for one evidence upload");
 
     await submitLocalProposal(actor, created.proposalId, 1);
-    await rejects(() => addCaseEvidence(actor, created.caseId, "late.pdf",
-      Buffer.from("%PDF-1.4\nnew file\n%%EOF\n")), "Post-review attachment");
+    const latePdf = await PDFDocument.create();
+    latePdf.addPage([600, 600]);
+    const lateBytes = Buffer.from(await latePdf.save());
+    await rejects(() => addCaseEvidence(actor, created.caseId, "late.pdf", lateBytes),
+      "Post-review attachment");
     const count = await prisma.aiEvidence.count({ where: { caseId: created.caseId, tenantId: tenant.id } });
     assert(count === 1, "Only one verified evidence object may exist");
     console.log("E3_EVIDENCE_DB_PASS: tenant, RBAC, MIME, SHA256, stored bytes, duplicate, audit, review lock");
