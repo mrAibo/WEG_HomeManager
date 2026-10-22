@@ -60,7 +60,8 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 
 ## E4 — Photo, PDF, invoice and letter understanding (P1; Issue #4)
 - [x] Browser camera/file picker now supports explicit JPEG/PNG/PDF evidence upload into saved Case through reused HaVeWa storage (no extraction yet).
-- [ ] OCR/vision via pluggable provider rather than custom model, with untrusted-file isolation and human review.
+- [x] E7 **pluggable AI Document Recognition MVP**: existing tenant-chosen Anthropic/OpenAI-compatible provider+model, explicit document consent, image/PDF payload adapters, untrusted JSON transcription, separate Evidence-hash-bound persisted draft and human-edited approval status. Synthetic DB and local fake-provider browser tests PASS; no live model requests.
+- [ ] Before real vision/handwriting deployment: validate selected affordable models on authorized documents, GDPR/AV/provider terms, optional field extraction with page evidence and correct unreadable abstention; controls for cost, rate limiting and external-host policy.
 - [ ] Source-linked extraction and field-level corrections; missing facts and confidence visible.
 - [ ] Safety-first escalation for emergencies. No invented diagnoses from an image.
 - [ ] Letters: dates, deadlines and editable response drafts.

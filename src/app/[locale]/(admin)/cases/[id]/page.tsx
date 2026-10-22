@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { CaseReview } from "@/components/case-review";
 import { CaseEvidenceUpload } from "@/components/case-evidence-upload";
+import { CaseRecognition } from "@/components/case-recognition";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function SavedCasePage({
@@ -12,7 +13,8 @@ export default async function SavedCasePage({
   const user = await requireRole(["VERWALTER"]);
   const { id } = await params;
   if (!id || id.length > 128) notFound();
-  const item = await prisma.aiCase.findFirst({
+  const [item, configuredAi] = await Promise.all([
+    prisma.aiCase.findFirst({
     where: { id, tenantId: user.tenantId },
     select: {
       id: true, summary: true, sourceText: true, sourceSha256: true, kind: true,
@@ -20,7 +22,10 @@ export default async function SavedCasePage({
       property: { select: { name: true } },
       evidence: {
         orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, mime: true, sha256: true, size: true, createdAt: true },
+        select: { id: true, name: true, mime: true, sha256: true, size: true, createdAt: true,
+          recognition: { select: { id: true, provider: true, model: true, rawText: true,
+            editedText: true, unclear: true, status: true, createdAt: true, sourceSha256: true } },
+        },
       },
       proposals: {
         orderBy: { createdAt: "desc" }, take: 1,
@@ -34,7 +39,12 @@ export default async function SavedCasePage({
         select: { id: true, action: true, version: true, createdAt: true },
       },
     },
-  });
+    }),
+    prisma.tenant.findUnique({
+      where: { id: user.tenantId },
+      select: { aiProvider: true, aiModel: true, aiApiKey: true, aiBaseUrl: true },
+    }),
+  ]);
   if (!item) notFound();
   const proposal = item.proposals[0];
 
@@ -78,6 +88,22 @@ export default async function SavedCasePage({
                   </a>
                   <p className="text-xs text-muted-foreground">{evidence.mime} · {Math.ceil(evidence.size / 1024)} KB · {evidence.createdAt.toLocaleString("de-DE")}</p>
                   <p className="break-all text-xs text-muted-foreground">SHA-256: {evidence.sha256}</p>
+                  {(proposal?.state === "DRAFT" || evidence.recognition) && (
+                    <CaseRecognition
+                      caseId={item.id} evidenceId={evidence.id} evidenceSha256={evidence.sha256}
+                      reviewable={proposal?.state === "DRAFT"}
+                      enabled={!!configuredAi?.aiApiKey && !!configuredAi?.aiModel}
+                      provider={configuredAi?.aiProvider ?? (configuredAi?.aiBaseUrl ? "openai" : "anthropic")}
+                      model={configuredAi?.aiModel ?? null}
+                      recognition={evidence.recognition ? {
+                        ...evidence.recognition,
+                        unclear: Array.isArray(evidence.recognition.unclear)
+                          ? evidence.recognition.unclear.filter((x): x is string => typeof x === "string")
+                          : [],
+                        createdAt: evidence.recognition.createdAt.toISOString(),
+                      } : null}
+                    />
+                  )}
                 </li>
               ))}
             </ul>

@@ -1281,6 +1281,7 @@ model AiCase {
   sourceSha256 String        @db.VarChar(64)
   proposals    AiProposal[]
   evidence     AiEvidence[]
+  recognitions AiRecognition[]
   events       AiCaseEvent[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -1352,9 +1353,38 @@ model AiEvidence {
   size         Int
   sha256       String   @db.VarChar(64)
   storageKey   String   @unique
+  recognition  AiRecognition?
   uploadedById String
   createdAt    DateTime @default(now())
 
   @@unique([tenantId, caseId, sha256])
+  @@unique([tenantId, caseId, id])
+  @@index([tenantId, caseId, createdAt])
+}
+
+// Untrusted model transcription; separate human correction and review.
+// Does not grant rights to send mail, transact, or modify existing proposals.
+model AiRecognition {
+  id           String     @id @default(cuid())
+  tenantId     String
+  caseId       String
+  aiCase       AiCase     @relation(fields: [tenantId, caseId], references: [tenantId, id], onDelete: Restrict)
+  evidenceId   String     @unique
+  evidence     AiEvidence @relation(fields: [tenantId, caseId, evidenceId], references: [tenantId, caseId, id], onDelete: Restrict)
+  sourceSha256 String     @db.VarChar(64)
+  provider     String
+  model        String
+  rawText      String     @db.Text
+  editedText   String?    @db.Text
+  unclear      Json
+  status       String     @default("DRAFT")
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdById  String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, caseId, evidenceId])
   @@index([tenantId, caseId, createdAt])
 }
