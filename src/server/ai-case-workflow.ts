@@ -3,6 +3,9 @@
 import { z } from "zod";
 import type { Prisma, UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { CaseWorkflowError } from "@/lib/ai-case-errors";
+import { verifyEvidenceSnapshot } from "@/server/ai-evidence-snapshot";
+export { CaseWorkflowError } from "@/lib/ai-case-errors";
 import {
   canApproveCopy,
   hashProposalContent,
@@ -26,13 +29,6 @@ const draftInput = z.object({
   body: z.string().trim().min(1).max(12000),
 });
 
-export class CaseWorkflowError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "CaseWorkflowError";
-  }
-}
-
 function managerOnly(actor: CaseActor) {
   if (!actor.id || !actor.tenantId || !canApproveCopy(actor.role)) {
     throw new CaseWorkflowError("Keine Berechtigung zur Bearbeitung von KI-Vorgängen.");
@@ -42,7 +38,7 @@ function managerOnly(actor: CaseActor) {
 async function scopedProposal(tx: Prisma.TransactionClient, actor: CaseActor, id: string) {
   const proposal = await tx.aiProposal.findFirst({
     where: { id, tenantId: actor.tenantId },
-    select: { id: true, tenantId: true, caseId: true, version: true, title: true, body: true, contentSha256: true, state: true },
+    select: { id: true, tenantId: true, caseId: true, version: true, title: true, body: true, contentSha256: true, evidenceSha256: true, state: true },
   });
   if (!proposal) throw new CaseWorkflowError("Vorschlag nicht gefunden.");
   return proposal;
@@ -110,7 +106,7 @@ export async function reviseLocalProposal(
       data: {
         title: input.title, body: input.body,
         contentSha256: hashProposalContent(input.title, input.body),
-        version: { increment: 1 }, state: "DRAFT",
+        version: { increment: 1 }, evidenceSha256: null, state: "DRAFT",
       },
     });
     if (result.count !== 1) throw new CaseWorkflowError("Version veraltet. Bitte neu laden.");
@@ -129,11 +125,17 @@ export async function submitLocalProposal(actor: CaseActor, proposalId: string, 
   if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1) throw new CaseWorkflowError("Ungültige Version.");
   return prisma.$transaction(async (tx) => {
     const before = await scopedProposal(tx, actor, proposalId);
-    const result = await tx.aiProposal.updateMany({
+    // Lock the DRAFT proposal BEFORE reading files. Uploads lock the same row,
+    // preventing a concurrent attachment from escaping the review snapshot.
+    const lock = await tx.aiProposal.updateMany({
       where: { id: proposalId, tenantId: actor.tenantId, version: expectedVersion, state: "DRAFT" },
-      data: { state: "IN_REVIEW" },
+      data: { updatedAt: new Date() },
     });
-    if (result.count !== 1) throw new CaseWorkflowError("Der Entwurf wurde verändert oder bereits eingereicht.");
+    if (lock.count !== 1) throw new CaseWorkflowError("Der Entwurf wurde verändert oder bereits eingereicht.");
+    const evidenceSha256 = await verifyEvidenceSnapshot(actor.tenantId, before.caseId);
+    await tx.aiProposal.update({
+      where: { id: before.id }, data: { state: "IN_REVIEW", evidenceSha256 },
+    });
     await tx.aiCaseEvent.create({
       data: { tenantId: actor.tenantId, caseId: before.caseId, actorId: actor.id,
         action: "proposal_submitted", version: expectedVersion },
@@ -154,10 +156,15 @@ export async function approveLocalCopy(actor: CaseActor, proposalId: string, exp
     if (before.contentSha256 !== hashProposalContent(before.title, before.body)) {
       throw new CaseWorkflowError("Inhaltssignatur ungültig.");
     }
+    const evidenceSha256 = await verifyEvidenceSnapshot(actor.tenantId, before.caseId);
+    if (!before.evidenceSha256 || before.evidenceSha256 !== evidenceSha256) {
+      throw new CaseWorkflowError("Beweismittel seit Einreichung verändert. Freigabe blockiert.");
+    }
     const result = await tx.aiProposal.updateMany({
       where: {
         id: before.id, tenantId: actor.tenantId,
         version: expectedVersion, state: "IN_REVIEW", contentSha256: before.contentSha256,
+        evidenceSha256: before.evidenceSha256,
       },
       data: { state: "APPROVED" },
     });
@@ -165,7 +172,7 @@ export async function approveLocalCopy(actor: CaseActor, proposalId: string, exp
     await tx.aiApproval.create({
       data: {
         tenantId: actor.tenantId, proposalId, version: expectedVersion,
-        contentSha256: before.contentSha256,
+        contentSha256: before.contentSha256, evidenceSha256,
         approvedById: actor.id, approvedRole: actor.role, scope: "COPY_ONLY",
       },
     });
@@ -187,6 +194,10 @@ export async function getApprovedLocalCopy(actor: CaseActor, proposalId: string)
   });
   if (!proposal || !isCurrentCopyApproval(proposal, proposal.approvals[0] ?? null)) {
     throw new CaseWorkflowError("Kein gültig freigegebener Text vorhanden.");
+  }
+  const snapshot = await verifyEvidenceSnapshot(actor.tenantId, proposal.caseId);
+  if (snapshot !== proposal.evidenceSha256) {
+    throw new CaseWorkflowError("Beweismittel verändert. Kopieren gesperrt.");
   }
   return { title: proposal.title, body: proposal.body, version: proposal.version, scope: "COPY_ONLY" as const };
 }

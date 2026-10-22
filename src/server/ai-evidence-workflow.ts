@@ -6,7 +6,9 @@ import {
   evidenceHash, identifyEvidence, safeEvidenceName, MAX_EVIDENCE_SIZE,
 } from "@/lib/ai-evidence-policy";
 import { saveFile, deleteFile } from "@/lib/storage";
-import { CaseWorkflowError, type CaseActor } from "@/server/ai-case-workflow";
+import { CaseWorkflowError } from "@/lib/ai-case-errors";
+import { MAX_CASE_EVIDENCE } from "@/server/ai-evidence-snapshot";
+import type { CaseActor } from "@/server/ai-case-workflow";
 
 export async function addCaseEvidence(
   actor: CaseActor, caseId: string, originalName: string, buffer: Buffer,
@@ -58,6 +60,10 @@ export async function addCaseEvidence(
       });
       if (locked.count !== 1) {
         throw new CaseWorkflowError("Der Vorgang wurde zwischenzeitlich eingereicht. Bitte neu laden.");
+      }
+      const count = await tx.aiEvidence.count({ where: { tenantId: actor.tenantId, caseId } });
+      if (count >= MAX_CASE_EVIDENCE) {
+        throw new CaseWorkflowError("Maximal zehn Beweismittel je Vorgang zulässig.");
       }
       const row = await tx.aiEvidence.create({
         data: {
