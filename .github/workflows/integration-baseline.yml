@@ -38,5 +38,7 @@ jobs:
         run: node --test prototype/ai-case/engine.test.mjs
       - name: Production build (no live database)
         run: npm run build
+      - name: Single-PC PDF worker bundle smoke (no DB or secrets)
+        run: node scripts/e6-worker-package-smoke.mjs
       # Intentional: npm run lint is currently failing on inherited HaVeWa issues.
       # See docs/weg-homemanager/BASELINE_VERIFICATION.md; do not call this a lint-clean CI.

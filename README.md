@@ -2,7 +2,7 @@
 
 **AI-first WEG management, with humans in control.**
 
-> Status: architecture and a small, dependency-free workflow prototype. This repository is not yet a copy or GitHub fork of HaVeWa, and it is not ready to manage real properties or money.
+> Status: HaVeWa code and its history are imported into this independent repository, with WEG-specific changes under stacked Draft PR review. The local application is **synthetic/test-only**, not ready to manage real properties, personal data or money. Start with [STATUS.md](STATUS.md).
 
 ## Vision
 
@@ -36,6 +36,7 @@ The AI prepares. Authorized humans review, correct and approve. Only then may an
 - [Dashboard usability design](docs/weg-homemanager/UX_DASHBOARD.md)
 - [MyHammer & Handwerker marketplaces](docs/weg-homemanager/CONTRACTOR_MARKETPLACES.md)
 - [Reuse-first policy](docs/weg-homemanager/REUSE_POLICY.md)
+- [Single-PC Windows deployment checklist](docs/weg-homemanager/SINGLE_PC_INSTALLATION.md)
 
 **UX:** responsive novice-friendly WebGUI in the intended HaVeWa Next.js architecture; PWA as a progressive improvement. No separate desktop/native stack for the first release.
 
@@ -52,10 +53,10 @@ The standalone prototype uses synthetic evidence and mock proposals; it performs
 
 ## Upstream and licensing
 
-Intended base: [HaVeWa](https://github.com/fgilde/hausverwaltung) by Florian Gilde. HaVeWa is AGPLv3 with a separate commercial-licensing option. Before importing its code, preserve upstream notices, decide on AGPL/commercial licensing and establish an upstream synchronization strategy. Do not copy code from repositories with unknown licenses.
+Imported base: [HaVeWa](https://github.com/fgilde/hausverwaltung) by Florian Gilde. Upstream history and attribution are preserved. The code is subject to AGPLv3; HaVeWa also offers a separate commercial-licensing option. Review AGPL obligations before distribution and keep upstream notices intact.
 
 ## Development
 
-After the AI-case prototype is added, run `node --test prototype/ai-case/engine.test.mjs` (Node 20+).
+Use **Node 24+** for the PDF inspection subprocess. Useful checks: `npm test`, `node --test prototype/ai-case/engine.test.mjs`, `npm run build`, and `node scripts/e6-worker-package-smoke.mjs` (works without production database). On Windows, run the **read-only** `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/e6-single-pc-preflight.ps1` and resolve all FAIL results before working with real users. There is no production installer yet.
 
 No actual apartment owner data, bank account numbers, authentication tokens or private property documents belong in Git.
