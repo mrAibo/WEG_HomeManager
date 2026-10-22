@@ -1,0 +1,26 @@
+name: AI case prototype
+
+on:
+  push:
+    branches: ["feature/ai-first-foundation"]
+  pull_request:
+    paths:
+      - "prototype/ai-case/**"
+      - ".github/workflows/ai-case-prototype.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Run human-in-the-loop safety tests
+        run: node --test prototype/ai-case/engine.test.mjs
+      - name: Exercise synthetic demo
+        run: node prototype/ai-case/demo.mjs
