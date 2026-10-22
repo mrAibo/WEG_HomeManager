@@ -1,0 +1,23 @@
+# EXAMPLE FOR A FRESH, ISOLATED SINGLE-PC INSTALLATION ONLY.
+# Do not apply this over the synthetic havewa-db volume or use its demo password.
+# Put WEG_DB_PASSWORD in a private env file NOT checked into Git.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wegapp
+      POSTGRES_DB: weg_home_manager
+      POSTGRES_PASSWORD: ${WEG_DB_PASSWORD:?Set a strong private WEG_DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - weg-homemanager-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wegapp -d weg_home_manager"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  weg-homemanager-db:
