@@ -1,7 +1,7 @@
 // Conservative pre-storage structure checks, NOT an antivirus scanner.
 // No decompression of images, no PDF rendering and no execution of file content.
 // The file is retained unchanged for its original SHA-256 provenance.
-import { PDFDocument } from "pdf-lib";
+import { inspectPdfInChild, PdfProcessRejected, pdfProcessErrorMessage } from "./ai-pdf-process";
 import type { EvidenceFormat } from "./ai-evidence-policy";
 
 export class UnsafeEvidenceError extends Error {
@@ -127,37 +127,14 @@ function inspectJpeg(data: Buffer) {
     throw new UnsafeEvidenceError("JPEG-Bildkopf oder Scandaten fehlen.");
 }
 
-const ACTIVE_PDF = /\/(?:JavaScript|JS|OpenAction|AA|Launch|EmbeddedFiles?|RichMedia|XFA|AcroForm|GoToR|SubmitForm|ImportData|Rendition|Collection|Filespec)(?![A-Za-z0-9_])/i;
-
 async function inspectPdf(data: Buffer) {
-  if (!/^%PDF-1\.[0-7](?:\r|\n|\s)/.test(data.toString("latin1", 0, 12)))
-    throw new UnsafeEvidenceError("PDF-Version nicht unterstützt.");
-  const tail = data.toString("latin1", Math.max(0, data.length - 2048));
-  if (!/%%EOF\s*$/.test(tail))
-    throw new UnsafeEvidenceError("PDF-Ende ungültig oder weitere Daten angehängt.");
-  if (ACTIVE_PDF.test(data.toString("latin1")))
-    throw new UnsafeEvidenceError("PDF enthält aktive Inhalte oder eingebettete Dateien.");
-  let pdf: PDFDocument;
   try {
-    pdf = await PDFDocument.load(data, {
-      ignoreEncryption: false,
-      throwOnInvalidObject: true,
-      updateMetadata: false,
-    });
-  } catch {
-    throw new UnsafeEvidenceError("PDF-Struktur nicht lesbar oder verschlüsselt.");
-  }
-  if (pdf.getPageCount() < 1 || pdf.getPageCount() > 120)
-    throw new UnsafeEvidenceError("PDF-Seitenzahl ungültig oder zu groß.");
-  for (const page of pdf.getPages()) {
-    const { width, height } = page.getSize();
-    if (!(width > 0 && height > 0 && width <= 15000 && height <= 15000))
-      throw new UnsafeEvidenceError("PDF-Seitengröße ungültig.");
-  }
-  // pdf-lib also resolves /Name tokens encoded as #XX; guard parsed objects.
-  for (const [, obj] of pdf.context.enumerateIndirectObjects()) {
-    if (ACTIVE_PDF.test(obj.toString()))
-      throw new UnsafeEvidenceError("PDF enthält nicht unterstützte Aktionen.");
+    await inspectPdfInChild(data);
+  } catch (error) {
+    if (error instanceof PdfProcessRejected) {
+      throw new UnsafeEvidenceError(pdfProcessErrorMessage(error.code));
+    }
+    throw new UnsafeEvidenceError("PDF-Prüfung nicht verfügbar.");
   }
 }
 

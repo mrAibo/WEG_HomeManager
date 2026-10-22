@@ -8,7 +8,7 @@ WEG HomeManager stores original PDF/JPEG/PNG bytes as tenant-scoped Evidence thr
 
 The existing authenticated human-only upload server action enforces per-tenant manager permissions, file size 1–10 MiB and a strict MIME signature computed from actual bytes. The additional `src/lib/ai-evidence-inspection.ts` gate now rejects:
 
-- **PDF:** unsupported header/version, missing terminal `%%EOF`, invalid or encrypted structures that `pdf-lib` cannot load, 0 or more than 120 pages, implausible pages, and visible/parsed PDF action or embedded-file markers such as `/JavaScript`, `/JS`, `/OpenAction`, `/AA`, `/Launch`, `/EmbeddedFile`, `/RichMedia`, `/XFA`, and form action tokens. Existing installed `pdf-lib` is reused.
+- **PDF (separate permission-restricted child process):** unsupported header/version, missing terminal `%%EOF`, invalid or encrypted structures that `pdf-lib` cannot load, 0 or more than 120 pages, implausible pages, and visible/parsed PDF action or embedded-file markers such as `/JavaScript`, `/JS`, `/OpenAction`, `/AA`, `/Launch`, `/EmbeddedFile`, `/RichMedia`, `/XFA`, and form action tokens. Existing installed `pdf-lib` is reused.
 - **PNG:** invalid signature/chunk sizes/CRC, unsupported metadata/extensions, invalid IHDR, missing IDAT/IEND, trailing bytes, declared dimensions above 8192 per side or 24 megapixels. PNG text/animated metadata and embedded ICC profiles are intentionally unsupported.
 - **JPEG:** malformed outer marker segments, missing SOF/SOS and EOI, excessive markers and declared dimensions above 8192 per side or 24 megapixels. The entropy-compressed image is **not** decoded; this is only bounded marker-level validation.
 
@@ -18,11 +18,11 @@ An accepted file is *structurally plausible*, **not verified malware-free**. The
 
 ## Before accepting real customer files (unmet release gates)
 
-1. Install and configure a supported, independently updated antimalware engine (for example ClamAV or a company-approved scanning gateway) with exact engine/signature versions, health checks and failure handling. Do not claim ClamAV is installed on Aibo; it is **not**.
-2. Move new uploads into **non-public, isolated quarantine**, with restrictive filesystem permissions, retention limits and quotas; perform scan with a fixed resource/time budget. Missing/unavailable/timed-out scanner must **fail closed**; don't approve, OCR, expose or copy such Evidence into production. Only atomic promotion of scan-clean bytes plus exact digest may make a file usable.
-3. Isolate PDF/image parser processes in a low-privilege sandbox or sidecar before further rendering/OCR, with CPU, memory, page and pixel limits. Parsing malicious files in the Next.js process is a residual risk even with `pdf-lib`. Reevaluate the supported format set with the operator.
+1. **Single-PC decision:** use the computer's existing managed antivirus. Verify active scanning covers the private Evidence directory and any Docker/WSL mount, signed updates work and malware detections are visible to the administrator. **No separate ClamAV is required** for this deployment plan.
+2. Keep uploaded bytes in **private, access-controlled local storage**, with quota and cleanup. The host antivirus may quarantine malicious bytes asynchronously; downloads and approvals must continue to verify original SHA-256 and fail closed if a file disappears or changes. A separate scanning/quarantine service remains **optional**, and should only be reevaluated for public anonymous uploads, third-party imports or binding organizational policy.
+3. The PDF parser now runs as a separate **Node 24 child process** with filesystem permission restrictions, no inherited secrets, process concurrency, V8 heap and wall-time limits (see `PDF_WORKER_ISOLATION.md`). It is **not** a complete OS sandbox: network egress and total RSS still require host restrictions. Future OCR/image decoding must run outside Next.js under stricter OS/container limits.
 4. Record scan decision, timestamp, scanner/definitions version, hashes and human uploader in mandatory tenant-scoped audit events. Do not store raw malware samples in app logs, emails, dashboards or source control.
-5. Enforce per-tenant quotas, request throttling, storage permissions, download audit and an explicit deletion/retention policy (DSGVO). Validate backups cover quarantine and published storage separately and document whether quarantine is intentionally excluded.
+5. Enforce per-tenant quotas, throttling, local file ACLs, download audit and deletion/retention policy (DSGVO). Verify backups include private Evidence; document how to recover files quarantined by the host antivirus.
 6. Re-run the adversarial test corpus (malformed PDF object streams, active content, polyglots, decompression bombs, malformed PNG/JPEG and EICAR with permission) inside **isolated staging** with no network egress before production approval.
 
 ## Verified synthetic tests
@@ -33,4 +33,4 @@ An accepted file is *structurally plausible*, **not verified malware-free**. The
 
 ## Operational decision
 
-Keep the entire PR chain in Draft. Only synthetic files are permitted during this phase. **Do not enable real file imports, OCR, external LLM calls or model-controlled REST writes** until malware/quarantine, privacy, and P0 REST Bearer authorization gates are reviewed.
+Keep the entire PR chain in Draft. Only synthetic files are permitted during this phase. **Do not enable real file imports, OCR, external LLM calls or model-controlled REST writes** until OS permission/firewall, host antivirus coverage, privacy and P0 REST Bearer authorization gates are reviewed.
