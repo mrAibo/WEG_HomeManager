@@ -16,6 +16,7 @@
 - `src/lib/ai-evidence-inspection.test.ts`: **11 new structural/negative tests**, including genuine pdf-lib PDF, active PDF catalog action, CRC tamper, PNG text injection and excess image dimensions. Existing synthetic DB, snapshot, browser and backup scripts now use genuine `pdf-lib` PDFs rather than pseudo PDF header+EOF fixtures. DB smoke ensures header-only fake PDF does not produce an Evidence record.
 - Full `npm test` **273 PASS / 1 SKIP**, TypeScript, scoped ESLint and production build PASS; local synthetic Evidence DB smoke, Evidence snapshot tamper DB smoke, coordinated PostgreSQL+Evidence scratch restore, and both actual Chrome scripts PASS (including 360px mobile/tenant download constraints). Local Next.js restarted on loopback.
 - `docs/weg-homemanager/EVIDENCE_INGEST_SECURITY.md` explicitly lists limits and release gates: true AV/quarantine fail-closed scanner, sandbox and malicious corpus, GDPR retention, per-tenant quotas, and REST Bearer P0 #11. This increment is **not** production ready.
+- Source commit `c810ea637cd6146cdd778e6419ae5dbad89a3c9b` in [Draft PR #19](https://github.com/mrAibo/WEG_HomeManager/pull/19), stacked on #18. Linux [run 39826498550](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39826498550) started for source code; verify its final outcome before review.
 
 ## E3 coordinated backup/recovery DRILL (2026-10-22)
 - Started from **clean** Evidence snapshot HEAD `896629a489cb828a8ee819447093ca431cea5060` on Aibo. PR #17 GitHub Linux CI 39813824764 **SUCCESS**, upstream HaVeWa unchanged, no merge to main.
