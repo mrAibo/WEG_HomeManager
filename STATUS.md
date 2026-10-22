@@ -16,6 +16,7 @@
 - Refactored shared CaseWorkflowError to avoid cyclic dependency. Review UI shows Evidence manifest digest for submitted versions. Existing role/tenant, COPY_ONLY and refusal of outgoing actions maintained.
 - `scripts/e3-evidence-snapshot-db-smoke.ts`: **PASS**, synthetic-only test changes original PDF bytes before human approval (blocked), restores original (approval succeeds), tampers again after approval (copy blocked) and cleans only own test rows/blob. Previous `scripts/e3-evidence-db-smoke.ts` PASS. Existing Chrome scripts for saved Case approval and Dashboard/detail Evidence upload **PASS**, including 360px mobile.
 - `npm test`: **262 PASS, 1 SKIP** (five new snapshot policy tests), prototype Node 8 PASS, TypeScript, scoped ESLint, Next production build PASS with inherited warnings. No AI/OCR/AV scanning, new provider or external write permission.
+- Source commit `ef0a17fc0325b10f538146df1540a139fd36db62` is published in [Draft PR #17](https://github.com/mrAibo/WEG_HomeManager/pull/17), based on #16. Linux [GitHub Actions run 39813718593](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39813718593) started for the source commit; verify final conclusion.
 - **Remaining:** this tests restoration of one synthetic file, NOT backup/recovery of the full PostgreSQL database plus local storage. Need coordinated backup/restore drill, per-object access auditing, retention, malware scanning and stricter document structure validation before production. REST Bearer issue #11 remains P0.
 
 ## E3 Evidence attachment increment (2026-10-22)
