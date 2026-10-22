@@ -20,7 +20,7 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 - [ ] Prepare deterministic 6-unit synthetic dataset (also 12 and 50 unit variants).
 **Gate:** Repeatable builds; source provenance and a scoped feature gap map, no real user data.
 
-## E2 — User-first Dashboard and design system (P0; parallel UX specification before E1, implementation after E1)
+## E2 — User-first Dashboard and design system (P0; [Issue #7](https://github.com/mrAibo/WEG_HomeManager/issues/7); parallel UX specification before E1, implementation after E1)
 - [ ] Mobile-first responsive web UI; PWA installability if supported by native web/browser primitives without scope creep.
 - [ ] German interface, conversational input, three capture actions: photograph, upload/scan, ask/speak.
 - [ ] Role-aware **"Was ist heute wichtig?"**: urgent cases, AI drafts awaiting review, pending responses, deadlines, bills and reserve summary.
@@ -44,7 +44,7 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 - [ ] Letters: dates, deadlines and editable response drafts.
 **Gate:** Golden image/PDF fixtures plus injection tests; nontechnical user can correct AI errors.
 
-## E5 — Handwerker & tender workflow (P1; Issue #5)
+## E5 — Handwerker & tender workflow (P1; [Issues #5](https://github.com/mrAibo/WEG_HomeManager/issues/5) / [#8](https://github.com/mrAibo/WEG_HomeManager/issues/8))
 - [ ] AI drafts a scoped job brief with measurements, photos and verified WEG authorization.
 - [ ] Compare contractors from authorized sources, user-created supplier list and live quotes with citations and timestamps.
 - [ ] MyHammer **assisted handoff only** in MVP: copy approved job text/photos and open official listing form; user posts manually. Do NOT scrape or auto-post without an authorized provider API and compliant contract.
