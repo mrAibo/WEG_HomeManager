@@ -17,6 +17,7 @@
 - Migration `20261022122326_weg_ai_case_approval`: local Postgres `havewa` **PASS**, 63/63 deployed; `npx prisma migrate status`: up to date. No production DB touched.
 - `scripts/e3-db-smoke.ts`: **PASS** in synthetic localhost DB (tenant/property scope, denied finance role, stale version, replay, old-approval revocation, version 1→2, audit rows and cleanup). `npx prisma validate`, `npx prisma generate`, `npx tsc --noEmit`, targeted ESLint **PASS**.
 - `npm test`: 228 PASS, 1 SKIP (including 10 new policy tests); prototype `node --test ...`: 8 PASS; `npm run build`: PASS with inherited middleware/Turbopack warnings.
+- Source commit `029f79c8e1e39224fd7ef405bb1d329c26b1818d` in [Draft PR #14](https://github.com/mrAibo/WEG_HomeManager/pull/14), based on E2 PR #13. Linux [GitHub Actions run 39778815659](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39778815659): **SUCCESS** (unit tests + build; DB smoke was local, not CI). Clean local working tree after original source push.
 - E3 incomplete: no authenticated server action/UI wired to this persistence service, no PDF/PHOTO evidence rows or secure ingestion, no generic approval executor or idempotent external side effects, no complete object-level RBAC/REST token purpose. Do not represent this as a production approval system.
 
 ## E2 synthetic UI increment (review branch `feature/e2-safe-intake-ui`)
@@ -52,10 +53,10 @@
 
 ## Known failures, not hidden
 - [ ] `npm run lint`: FAIL on imported HaVeWa source, **90 errors and 21 warnings**, mainly repeated `@next/next/no-html-link-for-pages` and React Hook purity/effect rules. Do not label lint green or suppress all rules; create scoped cleanup follow-up.
-- [x] PostgreSQL 16 Docker container running on **127.0.0.1:5432**; all 62 Prisma migrations applied successfully to a fresh synthetic-only DB.
+- [x] PostgreSQL 16 Docker container bound to **127.0.0.1:5432**; **63 Prisma migrations** now applied on local synthetic-only DB, including E3 review-core migration.
 - [x] Next.js production server started on **127.0.0.1:3000**; HTTP GET / and /setup returned 200 and redirected to /de/setup as expected.
 - [x] Linux GitHub Actions [run 39765475490](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39765475490) succeeded for baseline integration SHA `e44763ace62fefd992f5267f48f321353847bc06`.
-- [ ] Setup wizard manually completed, seeded/test user authenticated, interactive UI clickthrough and backup restore: **NOT VERIFIED**.
+- [x] Synthetic demo setup, administrator login and Chrome Dashboard draft/review clickthrough verified in E2. Backup restore and full accessibility testing: **NOT VERIFIED**.
 - [ ] HaVeWa authorization/MCP write methods, accounting and WEG voting legally/financially audited. Existing PostgreSQL account uses upstream demo credentials on loopback only, **not appropriate for production**.
 - [ ] Dashboard/PWA and AI-first integration implemented: **NOT YET**; existing upstream UI is not our approved redesign.
 - [ ] OCR/vision, search providers, MyHammer API integration, real quotes, payment processing or autonomous emails implemented: **NOT YET**.
