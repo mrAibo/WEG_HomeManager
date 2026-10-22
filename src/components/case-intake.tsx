@@ -80,7 +80,6 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
         body: draft.body,
       });
       if (result.ok && result.caseId) {
-        setSavedCaseId(result.caseId);
         const file = selectedFile.current;
         if (file) {
           const form = new FormData();
@@ -98,6 +97,9 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
         } else {
           setMessage("Vorgang mit Textentwurf gespeichert. Keine Datei hochgeladen.");
         }
+        // Expose the Case link only AFTER the attempted Evidence upload finishes.
+        // Otherwise navigation races the child parser and shows zero attachments.
+        setSavedCaseId(result.caseId);
       } else {
         setMessage(result.error ?? "Vorgang konnte nicht gespeichert werden.");
       }
@@ -204,8 +206,8 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
               <div>
                 <h3 className="font-semibold">Entwurf prüfen und bearbeiten</h3>
                 <p className="text-sm text-muted-foreground">
-                  Regelbasierte Textvorlage, noch kein KI-Ergebnis. Fotos und Dokumente
-                  bleiben lokal und sind nicht Teil des gespeicherten Vorgangs. Kein Versand.
+                  Regelbasierte Textvorlage, noch kein KI-Ergebnis. Ausgewählte Dateien
+                  werden bei ausdrücklichem Speichern zum Vorgang hinzugefügt. Kein Versand.
                 </p>
               </div>
             </div>

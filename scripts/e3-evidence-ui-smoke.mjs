@@ -51,6 +51,10 @@ try {
   await page.getByRole("button", { name: "Vorgang speichern" }).click();
   const link = page.getByRole("link", { name: "Gespeicherten Vorgang öffnen" });
   await link.waitFor();
+  const uploadStatus = await page.getByRole("status").last().innerText();
+  if (!uploadStatus.includes("mit Entwurf und Beweismittel gespeichert")) {
+    throw new Error("Dashboard did not finish Evidence upload: " + uploadStatus);
+  }
   const href = await link.getAttribute("href");
   caseId = href?.split("/").pop();
   if (!caseId) throw new Error("Missing saved Case link");

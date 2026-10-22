@@ -2,12 +2,19 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E4 P0 containment of legacy REST Bearer writes: all /api/v1 mutations unconditionally denied; MCP read-only and Auth.js WebGUI preserved. No LLM writes or real data.
+**Current focus:** E5 isolated PDF structural inspector subprocess under Node 24 filesystem permissions, bounded time/heap/concurrency, fail closed. Synthetic-only; no OCR or LLM writes.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `security/e4-rest-bearer-readonly` (stacked on structural Evidence PR #19 and earlier Draft PRs).
+**Branch:** `security/e5-pdf-worker-isolation` (stacked on REST read-only PR #20 and earlier Draft PRs).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E5 bounded PDF worker subprocess (2026-10-22)
+- Started from clean PR #20 HEAD `302346a8d9c42a0a26b8a48be3c68ed103e44fe4`; no upstream HaVeWa commits, Draft PR chain unmerged. Node 24.19 on Aibo.
+- Extracted PDF `pdf-lib` parser from Next.js `src/lib/ai-evidence-inspection.ts` into `src/server/workers/pdf-inspect-worker.mjs`, invoked via `src/lib/ai-pdf-process.ts`. Existing PNG/JPEG bounded no-decode checks remain in host process. No new dependencies or DB migrations.
+- Child runs with Node 24 `--permission`, read allowlist restricted to worker path and node_modules (no fs-write grant), stripped environment (no DB/auth/API secrets), PDF bytes over stdin and tiny JSON verdict over stdout. V8 heap 128 MiB (not RSS), timeout 8 seconds with kill, max two concurrent child parsers per app instance; failures/unsupported runtime/busy/invalid verdict refuse upload before storage. Source PDF unchanged, SHA-256 Evidence manifest+COPY_ONLY binding maintained.
+- Verified actual child process with structural PDF positive/negative tests, filesystem permission denial of `.gitignore` under same flags and concurrency guard. `src/lib/ai-pdf-process.test.ts`: 6 new tests. Full `npm test` **307 PASS, 1 SKIP**, prototype 8 PASS, `tsc --noEmit` and scoped ESLint PASS; E3 synthetic DB Evidence and tamper/recovery smokes PASS. Full coordinated database+file-store scratch restore **PASS**, production Next build **PASS**, authenticated Chrome saved Case review/clipboard and PDF Evidence flows **PASS** (exact bytes, denied anonymous download, post-review lock, 360px mobile).
+- Fixed a browser-detected **UI race** in `src/components/case-intake.tsx`: saved Case link is revealed **after** attempted binary Evidence upload, not while parser still runs. Browser smoke now asserts explicit upload-success status before opening Case. Limits: `--permission` **does not isolate network or cap total RSS**; OS-level constrained identity/firewall and no-egress sandbox still needed for real adversarial/unsolicited files. No separate ClamAV planned for single-PC install; user plans host-level AV. `docs/weg-homemanager/PDF_WORKER_ISOLATION.md` records design, limits and installer asset requirements. OCR remains OFF.
 
 ## E4 P0 REST Bearer write containment (2026-10-22)
 - Started at clean PR #19 HEAD `0dea5f70f8ddaa690cac75d19baae3097d56c24a`; upstream HaVeWa unchanged; previous PR CI SUCCESS; branch `security/e4-rest-bearer-readonly` stacked on #19. No merges.
