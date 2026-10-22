@@ -47,7 +47,7 @@ export function CaseEvidenceUpload({ caseId }: { caseId: string }) {
         PDF, JPG oder PNG bis 10 MB. Die unveränderten Datei-Bytes werden intern
         gespeichert und mit SHA-256 dokumentiert. Formatprüfung vor Speicherung,
         aber noch kein Virenscanner. Nur synthetische Testdateien verwenden.
-        Keine OCR- oder KI-Auswertung.
+        KI-Texterkennung erfolgt nur nach separatem Klick und ausdrücklicher Zustimmung.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <input ref={input} type="file" accept=".pdf,image/jpeg,image/png"
@@ -64,7 +64,7 @@ export function CaseEvidenceUpload({ caseId }: { caseId: string }) {
       </div>
       {file && <p className="text-xs text-muted-foreground">
         Ausgewählt: {file.name} · {(file.size / 1024).toFixed(0)} KB.
-        Upload erfolgt erst nach Klick auf „Datei sicher hinzufügen“.
+        Upload erfolgt erst nach Klick auf „Datei hinzufügen“.
       </p>}
       {message && <p role="status" className="text-sm">{message}</p>}
     </div>

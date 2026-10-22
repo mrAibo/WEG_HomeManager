@@ -125,7 +125,12 @@ export function SettingsConfig({
             </div>
             <Field name="aiBaseUrl" label={t("baseUrl")} defaultValue={ai.baseUrl ?? ""} placeholder="https://openrouter.ai/api/v1" />
             <Field name="aiApiKey" label={t("apiKey")} type="password" placeholder={keyPlaceholder} />
-            <Field name="aiModel" label={t("model")} defaultValue={ai.model ?? ""} placeholder="claude-opus-4-8 / gpt-4o-mini / …" />
+            <Field name="aiModel" label={t("model")} defaultValue={ai.model ?? ""} placeholder="Frei wählbarer Modellname mit Vision-/PDF-Funktion" />
+            <p className="text-xs text-muted-foreground">
+              Für die Dokumenterkennung gilt genau dieses Modell: keine automatische Umstellung auf ein größeres Modell.
+              Bilder benötigen Vision. PDF benötigt bei OpenAI-kompatiblen Anbietern die Responses-API;
+              nicht jeder lokale oder externe Server unterstützt sie. Ein erfolgreicher Text-KI-Test prüft dies nicht.
+            </p>
             <div className="flex items-center gap-3">
               <Button type="submit" disabled={aiSaving}>{t("save")}</Button>
               <Feedback state={aiSave} okLabel={t("saved")} />
