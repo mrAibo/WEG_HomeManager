@@ -1,0 +1,1247 @@
+// HaVeWa — Kern-Schema (Phase 1). Spätere Phasen erweitern hier.
+generator client {
+  provider      = "prisma-client-js"
+  // native = lokale Entwicklung, debian-openssl-3.0.x = Docker-Runtime (node:bookworm-slim)
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  VERWALTER
+  BUCHHALTUNG
+  BEIRAT
+  EIGENTUEMER
+  MIETER
+  HANDWERKER
+}
+
+enum ManagementType {
+  MIET
+  WEG
+}
+
+enum FeeType {
+  PAUSCHAL // fester Betrag pro Monat
+  PRO_EINHEIT // Betrag je Einheit pro Monat
+  PROZENT // Prozent der monatlichen Sollmiete
+}
+
+enum CustomFieldEntity {
+  PROPERTY
+  UNIT
+  PERSON
+  LEASE
+}
+
+enum TemplateCategory {
+  ANSCHREIBEN
+  ABRECHNUNG
+  MAHNUNG
+  VERTRAG
+  PROTOKOLL
+  SONSTIGES
+}
+
+// Vorlage/Serienbrief mit Platzhaltern ({{schluessel}}).
+model Template {
+  id        String           @id @default(cuid())
+  tenantId  String
+  category  TemplateCategory @default(ANSCHREIBEN)
+  name      String
+  subject   String?
+  body      String
+  createdAt DateTime         @default(now())
+
+  @@index([tenantId])
+}
+
+// Gespeichertes Spalten-Mapping für den CSV-Import (#33), je Mandant/Entität.
+model ImportPreset {
+  id        String   @id @default(cuid())
+  tenantId  String
+  entity    String // person | property | unit
+  name      String
+  mapping   Json // Feld -> Spaltenindex
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// Benutzerdefinierte Feld-Definition je Mandant und Entität.
+model CustomFieldDef {
+  id        String            @id @default(cuid())
+  tenantId  String
+  entity    CustomFieldEntity
+  key       String
+  label     String
+  createdAt DateTime          @default(now())
+
+  @@unique([tenantId, entity, key])
+  @@index([tenantId])
+}
+
+enum PropertyType {
+  WOHNEN
+  GEWERBE
+  GEMISCHT
+}
+
+enum UnitType {
+  WOHNUNG
+  GEWERBE
+  STELLPLATZ
+  KELLER
+  SONSTIGES
+}
+
+enum MeterType {
+  STROM
+  GAS
+  WASSER_KALT
+  WASSER_WARM
+  WAERME
+}
+
+// Mandant = Verwaltungsfirma. Jede Domänen-Zeile trägt tenantId.
+model Tenant {
+  id         String     @id @default(cuid())
+  name       String
+  address    String? // Anschrift der Verwaltung (z. B. Wohnungsgeberbestätigung, #41)
+  phone      String? // optionale Telefonnummer, auf Briefen und Dokumenten (#76)
+  createdAt  DateTime   @default(now())
+  users      User[]
+  properties Property[]
+  persons    Person[]
+
+  // KI-Konfiguration (überschreibt ENV, wenn gesetzt)
+  aiProvider String? // "anthropic" | "openai" (OpenAI-kompatibel)
+  aiBaseUrl  String? // Basis-URL für OpenAI-kompatible Anbieter (OpenRouter, Ollama, Groq …)
+  aiApiKey   String?
+  aiModel    String?
+
+  // SMTP-Konfiguration für den Postausgang
+  smtpHost     String?
+  smtpPort     Int?
+  smtpUser     String?
+  smtpPassword String?
+  smtpFrom     String?
+  smtpSecure   Boolean @default(false)
+
+  // Postausgang (#79): Versandverzögerung in Minuten für E-Mails und Briefe;
+  // 0 = sofort, null = nur manuell aus dem Postausgang
+  outboxDelayMin Int? @default(10)
+
+  // E-Mail-Benachrichtigungen an Verwalter (#77): aktivierte Arten (lib/notify-kinds),
+  // notifyCursorAt = Ende des zuletzt geprüften Zeitfensters
+  notifyEmail    String[] @default([])
+  notifyCursorAt DateTime?
+
+  // IMAP-Postfach für eingehende Mails (Kommunikationsverlauf, #39)
+  imapHost     String?
+  imapPort     Int?
+  imapUser     String?
+  imapPassword String?
+  imapSecure   Boolean @default(true)
+  imapMailbox  String? // Standard: INBOX
+  lastInboundSyncAt DateTime?
+  imapAutoSync Boolean @default(false) // automatisch im Hintergrund abrufen
+  imapSyncIntervalMin Int @default(30) // Intervall in Minuten (min. 5)
+  imapAttachments   Boolean @default(true) // Anhänge eingehender Mails speichern (nur bekannte Kontakte)
+  imapAttachMaxMb   Int     @default(10)   // max. Größe je Anhang in MB
+
+  // Briefversand (#58): Pingen und/oder Deutsche Post E-POSTBUSINESS; Secrets verschlüsselt
+  pingenClientId        String?
+  pingenClientSecretEnc String?
+  pingenOrgId           String? // leer = erste Organisation des Kontos
+  pingenStaging         Boolean @default(false) // Testumgebung (nichts wird gedruckt)
+  letterAutoRefresh     Boolean @default(false) // Briefstatus täglich beim Anbieter abfragen (#65)
+  letterAutoRefreshAt   DateTime?
+  epostVendorId         String?
+  epostEkp              String? // 10-stellige Kundennummer
+  epostPasswordEnc      String?
+  epostSecretEnc        String?
+  epostTest             Boolean @default(true) // testFlag: Briefe werden nicht gedruckt
+
+  // Branding (Theme-Farbe als HEX, Logo im Storage)
+  brandColor String?
+  logoKey    String?
+
+  // Datumsformat unabhängig von der UI-Sprache ("de-DE" | "en-GB" | "en-US" | "iso")
+  dateFormat String?
+
+  // HeizkostenV: Standard-Verbrauchsanteil in % (50–100, Rest nach Fläche).
+  // null → 70 %. Je Kostenposition überschreibbar (CostEntry.consumptionSharePct).
+  heatingConsumptionPct Int?
+
+  // true bei geseedeten Demo-Daten → öffentliche Marketing-Seite als Fallback
+  isDemo Boolean @default(false)
+
+  bankConnector BankConnector?
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         UserRole @default(VERWALTER)
+  superAdmin   Boolean  @default(false) // Instanz-Admin: darf Mandanten anlegen/wechseln
+  locale       String   @default("de")
+  personId     String?
+  person       Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  assignedTickets Ticket[] @relation("TicketAssignee")
+  reportedTickets Ticket[] @relation("TicketReporter")
+  apiTokens    ApiToken[]
+  notifications Notification[]
+  sentEmails   EmailMessage[]
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// In-App-Benachrichtigung für einen Benutzer (z. B. Schadensmeldung eingegangen).
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String?
+  link      String? // Ziel-Pfad ohne Locale, z. B. "/tickets"
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([tenantId])
+}
+
+// API-/MCP-Zugangstoken je Benutzer (nur Hash gespeichert).
+model ApiToken {
+  id         String    @id @default(cuid())
+  tenantId   String
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  tokenHash  String    @unique
+  prefix     String // Anzeige-Präfix (z. B. hvw_ab12…)
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model Property {
+  id         String         @id @default(cuid())
+  tenantId   String
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name       String
+  street     String
+  zip        String
+  city       String
+  type          PropertyType   @default(WOHNEN)
+  management    ManagementType @default(MIET)
+  meaTotal      Float            @default(1000) // Soll-Summe Miteigentumsanteile (Tausendstel) für WEG
+  feeType       FeeType        @default(PAUSCHAL) // Verwalterhonorar-Modell
+  feeValue      Decimal        @default(0) @db.Decimal(10, 2)
+  custom        Json           @default("{}") // benutzerdefinierte Felder (key→value)
+  // Flächenmodell (Gewerbe): zeitanteilige Teilflächen aus einem Pool statt fester Unit-Fläche.
+  areaModel     Boolean        @default(false)
+  totalArea     Decimal?       @db.Decimal(12, 2) // Gesamtfläche des Pools
+  areaAllocations AreaAllocation[]
+  buildings     Building[]
+  subcommunities Subcommunity[]
+  costEntries   CostEntry[]
+  economicPlans EconomicPlan[]
+  reserves      Reserve[]
+  meetings      Meeting[]
+  resolutions   Resolution[]
+  documents     Document[]
+  tickets       Ticket[]
+  maintenance   MaintenanceContract[]
+  appointments  Appointment[]
+  insurances    Insurance[]
+  propertyTax   PropertyTax?
+  createdAt     DateTime       @default(now())
+
+  @@index([tenantId])
+}
+
+// Untergemeinschaft einer WEG (#42), z. B. Vorderhaus/Hinterhaus. Kosten,
+// Rücklagen, Beschlüsse und Wirtschaftsplan können einer UG zugeordnet werden;
+// verteilt bzw. abgestimmt wird dann nur unter deren Einheiten (eigene MEA-Summe).
+model Subcommunity {
+  id          String              @id @default(cuid())
+  tenantId    String
+  propertyId  String
+  property    Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name        String
+  units       Unit[]
+  costEntries CostEntry[]
+  reserves    Reserve[]
+  resolutions Resolution[]
+  plans       SubcommunityPlan[]
+  createdAt   DateTime            @default(now())
+
+  @@index([tenantId])
+  @@index([propertyId])
+}
+
+// Wirtschaftsplan einer Untergemeinschaft je Jahr (Gesamt-WEG: EconomicPlan).
+model SubcommunityPlan {
+  id             String       @id @default(cuid())
+  tenantId       String
+  subcommunityId String
+  subcommunity   Subcommunity @relation(fields: [subcommunityId], references: [id], onDelete: Cascade)
+  year           Int
+  totalAmount    Decimal      @db.Decimal(12, 2)
+  note           String?
+  createdAt      DateTime     @default(now())
+
+  @@unique([subcommunityId, year])
+  @@index([tenantId])
+}
+
+model Building {
+  id         String   @id @default(cuid())
+  tenantId   String
+  name       String
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  units      Unit[]
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([propertyId])
+}
+
+model Unit {
+  id         String   @id @default(cuid())
+  tenantId   String
+  label      String
+  type       UnitType @default(WOHNUNG)
+  area       Decimal  @db.Decimal(10, 2)
+  rooms      Decimal? @db.Decimal(4, 1)
+  mea        Float? // Miteigentumsanteile (Tausendstel) für WEG
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  subcommunityId String? // Untergemeinschaft (#42)
+  subcommunity   Subcommunity? @relation(fields: [subcommunityId], references: [id], onDelete: SetNull)
+  leases     Lease[]
+  owners     Owner[]
+  meters     Meter[]
+  tickets    Ticket[]
+  documents  Document[]
+  custom     Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([buildingId])
+}
+
+model Meter {
+  id        String         @id @default(cuid())
+  tenantId  String
+  unitId    String
+  unit      Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  type      MeterType
+  serialNo  String
+  readings  MeterReading[]
+  createdAt DateTime       @default(now())
+
+  @@index([tenantId])
+  @@index([unitId])
+}
+
+model MeterReading {
+  id        String   @id @default(cuid())
+  tenantId  String
+  meterId   String
+  meter     Meter    @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  date      DateTime
+  value     Decimal  @db.Decimal(12, 3)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([meterId])
+}
+
+enum PersonType {
+  MIETER
+  EIGENTUEMER
+  INTERESSENT
+  HANDWERKER
+  MAKLER
+  BANK
+  SONSTIGE
+}
+
+model Person {
+  id        String     @id @default(cuid())
+  tenantId  String
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  type      PersonType @default(SONSTIGE) // Kontaktgruppe (Adressbuch)
+  note      String? // z.B. Mietgesuch bei Interessenten
+  iban          String? // Bankverbindung (#45)
+  accountHolder String? // Kontoinhaber, kann vom Kontaktnamen abweichen
+  address       String? // Postanschrift ohne Namen, zeilenweise (Briefe, #58)
+  owners    Owner[]
+  renters   Renter[]
+  mandates  SepaMandate[]
+  users     User[]
+  documents Document[]
+  areaAllocations AreaAllocation[]
+  inboundEmails InboundEmail[]
+  letters   Letter[]
+  custom    Json          @default("{}")
+  appointments Appointment[] // Termine, an denen der Kontakt teilnimmt (#74)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// Eingehende E-Mail (IMAP-Import) für den Kommunikationsverlauf (#39).
+model InboundEmail {
+  id          String   @id @default(cuid())
+  tenantId    String
+  messageId   String // Message-ID oder Fallback-Schlüssel (Dedup)
+  fromAddress String
+  fromName    String?
+  subject     String?
+  body        String
+  receivedAt  DateTime
+  personId    String?
+  person      Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  attachments InboundEmailAttachment[]
+  readAt      DateTime? // gelesen (Posteingang, #43)
+  doneAt      DateTime? // bearbeitet/erledigt
+  references  String? // Message-IDs aus In-Reply-To/References, leerzeichengetrennt
+  threadId    String? // Unterhaltung (#43); null = eigene Unterhaltung (Schlüssel = id)
+  createdAt   DateTime @default(now())
+
+  @@unique([tenantId, messageId])
+  @@index([tenantId])
+  @@index([personId])
+  @@index([tenantId, threadId])
+}
+
+// Anhang einer eingehenden Mail (#52): liegt zunächst nur an der Mail (eigene
+// Datei im Storage) und wird erst per Klick als Dokument übernommen (documentId).
+// Übernommen teilen sich Anhang und Dokument dieselbe Datei.
+model InboundEmailAttachment {
+  id             String       @id @default(cuid())
+  inboundEmailId String
+  inboundEmail   InboundEmail @relation(fields: [inboundEmailId], references: [id], onDelete: Cascade)
+  name           String
+  mime           String
+  size           Int
+  storageKey     String
+  documentId     String?
+  document       Document?    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([inboundEmailId])
+}
+
+// Eigentümer einer Einheit (WEG / Mietobjekt-Eigentümer)
+model Owner {
+  id       String  @id @default(cuid())
+  tenantId String
+  personId String
+  person   Person  @relation(fields: [personId], references: [id], onDelete: Cascade)
+  unitId   String
+  unit     Unit    @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  share    Float     @default(1000) // Anteil an der Einheit (Tausendstel)
+
+  @@index([tenantId])
+}
+
+model Lease {
+  id            String           @id @default(cuid())
+  tenantId      String
+  unitId        String
+  unit          Unit             @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  startDate     DateTime
+  endDate       DateTime?
+  rentCold      Decimal          @db.Decimal(10, 2)
+  personCount   Int              @default(1)
+  noticePeriodM Int? // Kündigungsfrist in Monaten
+  renters       Renter[]
+  components    RentComponent[]
+  adjustments   RentAdjustment[]
+  deposit       Deposit?
+  charges       Charge[]
+  areaAllocations AreaAllocation[]
+  custom        Json             @default("{}")
+  createdAt     DateTime         @default(now())
+
+  @@index([tenantId])
+  @@index([unitId])
+}
+
+model Renter {
+  id       String @id @default(cuid())
+  tenantId String
+  personId String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  leaseId  String
+  lease    Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+enum RentComponentType {
+  NEBENKOSTEN
+  HEIZKOSTEN
+  STELLPLATZ
+  MODERNISIERUNG
+  SONSTIGES
+}
+
+// Wiederkehrende Miet-Bestandteile zusätzlich zur Kaltmiete.
+model RentComponent {
+  id       String            @id @default(cuid())
+  tenantId String
+  leaseId  String
+  lease    Lease             @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  type     RentComponentType
+  amount   Decimal           @db.Decimal(10, 2)
+  note     String?
+
+  @@index([tenantId])
+  @@index([leaseId])
+}
+
+enum AdjustmentType {
+  STAFFEL
+  INDEX
+}
+
+// Staffel-/Indexmiete: geplante oder erfolgte Kaltmieten-Anpassung.
+model RentAdjustment {
+  id            String         @id @default(cuid())
+  tenantId      String
+  leaseId       String
+  lease         Lease          @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  type          AdjustmentType
+  effectiveDate DateTime
+  newRentCold   Decimal        @db.Decimal(10, 2)
+  indexBase     Decimal?       @db.Decimal(8, 2) // VPI Basiswert (INDEX)
+  indexNew      Decimal?       @db.Decimal(8, 2) // VPI neuer Wert (INDEX)
+  applied       Boolean        @default(false)
+  note          String?
+
+  @@index([tenantId])
+  @@index([leaseId])
+}
+
+enum DepositType {
+  BAR
+  BUERGSCHAFT
+  VERPFAENDET
+  KAUTIONSKONTO
+}
+
+model Deposit {
+  id           String      @id @default(cuid())
+  tenantId     String
+  leaseId      String      @unique
+  lease        Lease       @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  type         DepositType
+  amount       Decimal     @db.Decimal(10, 2)
+  accountId    String? // Kautionskonto
+  account      Account?    @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  interestRate Decimal?    @db.Decimal(5, 2) // Verzinsung % p.a.
+  receivedDate DateTime?
+  returnedDate DateTime?
+  note         String?
+
+  @@index([tenantId])
+}
+
+// ---------- Finanzen ----------
+
+enum AccountType {
+  BANK
+  KAUTION
+  RUECKLAGE
+  SACHKONTO
+}
+
+model Account {
+  id        String      @id @default(cuid())
+  tenantId  String
+  name      String
+  type      AccountType @default(BANK)
+  iban      String?
+  balance   Decimal?    @db.Decimal(14, 2) // Kontostand laut Bank (Bank-Sync, #57)
+  balanceAt DateTime? // Stand des Kontostands
+  payments  Payment[]
+  deposits  Deposit[]
+  bankLinks BankLink[]
+  createdAt DateTime    @default(now())
+
+  @@index([tenantId])
+}
+
+// ---------- Open Banking (Enable Banking) ----------
+
+// Self-Service-Connector je Mandant. Private Key verschlüsselt (lib/crypto).
+model BankConnector {
+  id            String     @id @default(cuid())
+  tenantId      String     @unique
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  applicationId String
+  privateKeyEnc String
+  baseUrl       String? // optional abweichende API-Basis
+  psuType       String     @default("business")
+  autoSync      Boolean    @default(false) // täglich automatisch synchronisieren (#54)
+  lastAutoSyncAt DateTime?
+  links         BankLink[]
+  createdAt     DateTime   @default(now())
+}
+
+// Verknüpfung Enable-Banking-Konto ↔ HaVeWa-Konto (nach Consent).
+model BankLink {
+  id                String        @id @default(cuid())
+  tenantId          String
+  connectorId       String
+  connector         BankConnector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  accountId         String
+  account           Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  aspspName         String
+  aspspCountry      String
+  sessionId         String
+  accountUid        String
+  consentValidUntil DateTime?
+  lastSyncAt        DateTime?
+  createdAt         DateTime      @default(now())
+
+  @@index([tenantId])
+}
+
+// Kurzlebiger CSRF-/Kontext-Speicher zwischen /auth und Callback.
+model BankAuthState {
+  state        String   @id
+  tenantId     String
+  aspspName    String
+  aspspCountry String
+  createdAt    DateTime @default(now())
+}
+
+enum ChargeType {
+  MIETE
+  NEBENKOSTEN
+  HAUSGELD
+  KAUTION
+  SONSTIGES
+}
+
+// Sollstellung: Forderung gegen Mieter/Eigentümer.
+model Charge {
+  id          String         @id @default(cuid())
+  tenantId    String
+  leaseId     String?
+  lease       Lease?         @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  // Flächenmodell-Miete: Sollstellung aus einer Teilfläche (statt Vertrag).
+  areaAllocationId String?
+  areaAllocation   AreaAllocation? @relation(fields: [areaAllocationId], references: [id], onDelete: Cascade)
+  type        ChargeType     @default(MIETE)
+  period      DateTime // Monatserster des Abrechnungsmonats
+  dueDate     DateTime
+  amount      Decimal        @db.Decimal(10, 2)
+  description String?
+  payments    Payment[]
+  dunnings    DunningNotice[]
+  createdAt   DateTime       @default(now())
+
+  @@unique([areaAllocationId, period]) // Dedup je Teilfläche/Monat
+  @@index([tenantId])
+  @@index([leaseId])
+}
+
+enum PaymentDirection {
+  EINGANG
+  AUSGANG
+}
+
+model Payment {
+  id        String           @id @default(cuid())
+  tenantId  String
+  accountId String?
+  account   Account?         @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  chargeId  String?
+  charge    Charge?          @relation(fields: [chargeId], references: [id], onDelete: SetNull)
+  date      DateTime
+  amount    Decimal          @db.Decimal(10, 2)
+  direction PaymentDirection @default(EINGANG)
+  reference String?
+  counterparty     String? // Zahler (Eingang) bzw. Empfänger (Ausgang) laut Bank, #60
+  counterpartyIban String?
+  externalId String? // Bank-Sync-Transaktions-ID (Dedup)
+  note      String? // manuelle Notiz zur Kontobewegung
+  documents Document[] // verknüpfte Belege/Dokumente (Rechnungen etc.)
+  createdAt DateTime         @default(now())
+
+  @@unique([tenantId, externalId])
+  @@index([tenantId])
+  @@index([chargeId])
+}
+
+model SepaMandate {
+  id         String   @id @default(cuid())
+  tenantId   String
+  personId   String
+  person     Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  iban       String
+  mandateRef String
+  signedDate DateTime
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+model DunningNotice {
+  id       String   @id @default(cuid())
+  tenantId String
+  chargeId String
+  charge   Charge   @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  level    Int      @default(1)
+  date     DateTime @default(now())
+  fee      Decimal  @default(0) @db.Decimal(10, 2)
+  note     String?
+
+  @@index([tenantId])
+  @@index([chargeId])
+}
+
+// ---------- Betriebskostenabrechnung ----------
+
+enum CostType {
+  GRUNDSTEUER
+  WASSER
+  ENTWAESSERUNG
+  HEIZUNG
+  WARMWASSER
+  AUFZUG
+  STRASSENREINIGUNG
+  MUELL
+  GEBAEUDEREINIGUNG
+  GARTENPFLEGE
+  BELEUCHTUNG
+  SCHORNSTEIN
+  VERSICHERUNG
+  HAUSWART
+  KABEL
+  INSTANDHALTUNG // WEG: Instandhaltung/-setzung (nicht umlagefähig)
+  VERWALTUNG // WEG: Verwaltungskosten (nicht umlagefähig)
+  SONSTIGE
+}
+
+enum AllocationMethodDb {
+  AREA
+  UNITS
+  PERSONS
+  CONSUMPTION
+  MEA
+}
+
+// ---------- Aufgaben / Fristen ----------
+
+model Task {
+  id        String    @id @default(cuid())
+  tenantId  String
+  title     String
+  dueDate   DateTime?
+  done      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId])
+}
+
+// ---------- Instandhaltung ----------
+
+model Contractor {
+  id          String                @id @default(cuid())
+  tenantId    String
+  name        String
+  trade       String // Gewerk
+  email       String?
+  phone       String?
+  tickets     Ticket[]
+  contracts   MaintenanceContract[]
+  createdAt   DateTime              @default(now())
+
+  @@index([tenantId])
+}
+
+enum TicketStatus {
+  OFFEN
+  IN_ARBEIT
+  WARTEND
+  ERLEDIGT
+}
+
+enum TicketPriority {
+  NIEDRIG
+  MITTEL
+  HOCH
+}
+
+enum TicketCategory {
+  STOERUNG
+  SCHADEN
+  WARTUNG
+  RECHNUNG
+  VERTRAG
+  SONSTIGES
+}
+
+model Ticket {
+  id           String         @id @default(cuid())
+  tenantId     String
+  propertyId   String?
+  property     Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  unitId       String?
+  unit         Unit?          @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  contractorId String?
+  contractor   Contractor?    @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  assigneeId   String?
+  assignee     User?          @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporterId   String? // Portal-Melder (Mieter), für Status-Benachrichtigung
+  reporter     User?          @relation("TicketReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  title        String
+  description  String?
+  category     TicketCategory @default(SONSTIGES)
+  status       TicketStatus   @default(OFFEN)
+  priority     TicketPriority @default(MITTEL)
+  dueDate      DateTime?
+  reminderDate DateTime? // Wiedervorlage
+  timeSpentMin Int            @default(0) // erfasste Zeit in Minuten
+  createdAt    DateTime       @default(now())
+
+  @@index([tenantId])
+}
+
+model MaintenanceContract {
+  id             String      @id @default(cuid())
+  tenantId       String
+  propertyId     String
+  property       Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  contractorId   String?
+  contractor     Contractor? @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  title          String
+  intervalMonths Int
+  nextDue        DateTime
+  note           String?
+  createdAt      DateTime    @default(now())
+
+  @@index([tenantId])
+}
+
+// ---------- Dokumente (GoBD) ----------
+
+enum DocumentCategory {
+  VERTRAG
+  RECHNUNG
+  ERECHNUNG
+  PROTOKOLL
+  ABRECHNUNG
+  EMAIL_ANHANG // aus einer E-Mail übernommen (#51)
+  BRIEF // erstellter Brief (#58)
+  BESCHEINIGUNG // z. B. Wohnungsgeberbestätigung (#75)
+  SONSTIGES
+}
+
+model Document {
+  id         String           @id @default(cuid())
+  tenantId   String
+  propertyId String?
+  property   Property?        @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  name       String
+  category   DocumentCategory @default(SONSTIGES)
+  unitId     String?
+  unit       Unit?            @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  personId   String?
+  person     Person?          @relation(fields: [personId], references: [id], onDelete: SetNull)
+  mime       String
+  size       Int
+  storageKey String // Dateiname im Storage
+  eInvoice   Boolean          @default(false)
+  invoiceNo   String? // aus E-Rechnung extrahiert
+  invoiceTotal Decimal?       @db.Decimal(12, 2) // aus E-Rechnung extrahiert
+  emailAttachments EmailAttachment[]
+  inboundAttachments InboundEmailAttachment[]
+  payments   Payment[] // als Beleg verknüpfte Kontobewegungen (#23)
+  letters    Letter[] @relation("LetterPdf") // Briefe, deren PDF dieses Dokument ist (#58)
+  letterAttachments Letter[] @relation("LetterAttachments") // als Anlage mitversendet (#66)
+  appointments Appointment[] // als Unterlage verknüpfte Termine (#74)
+  createdAt  DateTime         @default(now())
+
+  @@index([tenantId])
+  @@index([propertyId])
+}
+
+// ---------- Eigentümerversammlung ----------
+
+enum MeetingStatus {
+  GEPLANT
+  DURCHGEFUEHRT
+}
+
+model Meeting {
+  id          String        @id @default(cuid())
+  tenantId    String
+  propertyId  String
+  property    Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  title       String
+  date        DateTime
+  location    String?
+  status      MeetingStatus @default(GEPLANT)
+  protocol    String? // Protokolltext
+  agendaItems AgendaItem[]
+  resolutions Resolution[]
+  createdAt   DateTime      @default(now())
+
+  @@index([tenantId])
+  @@index([propertyId])
+}
+
+model AgendaItem {
+  id          String  @id @default(cuid())
+  tenantId    String
+  meetingId   String
+  meeting     Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  position    Int
+  title       String
+  description String?
+
+  @@index([tenantId])
+  @@index([meetingId])
+}
+
+enum ResolutionResult {
+  ANGENOMMEN
+  ABGELEHNT
+  VERTAGT
+}
+
+// Beschluss + Beschlusssammlung (§24 Abs. 7 WEG): fortlaufende Nummer je Objekt.
+model Resolution {
+  id            String           @id @default(cuid())
+  tenantId      String
+  propertyId    String
+  property      Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  meetingId     String?
+  meeting       Meeting?         @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  subcommunityId String? // Beschluss einer Untergemeinschaft (#42), sonst Gesamt-WEG
+  subcommunity   Subcommunity?   @relation(fields: [subcommunityId], references: [id], onDelete: SetNull)
+  number        Int // fortlaufend je Objekt
+  title         String
+  text          String
+  date          DateTime
+  result        ResolutionResult @default(ANGENOMMEN)
+  votesYes      Int              @default(0)
+  votesNo       Int              @default(0)
+  votesAbstain  Int              @default(0)
+  createdAt     DateTime         @default(now())
+
+  @@index([tenantId])
+  @@index([propertyId])
+}
+
+// ---------- WEG ----------
+
+// Wirtschaftsplan (§28 WEG): geplante Gesamtkosten je WEG-Objekt und Jahr.
+// Hausgeld je Eigentümer = Umlage nach MEA, monatlich = /12.
+model EconomicPlan {
+  id          String   @id @default(cuid())
+  tenantId    String
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  year        Int
+  totalAmount Decimal  @db.Decimal(12, 2)
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@unique([propertyId, year])
+  @@index([tenantId])
+}
+
+// Erhaltungsrücklage (WEG-Reform 2020).
+model Reserve {
+  id           String              @id @default(cuid())
+  tenantId     String
+  propertyId   String
+  property     Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name         String
+  subcommunityId String? // Rücklage einer Untergemeinschaft (#42), sonst Gesamt-WEG
+  subcommunity   Subcommunity?     @relation(fields: [subcommunityId], references: [id], onDelete: SetNull)
+  transactions ReserveTransaction[]
+  createdAt    DateTime            @default(now())
+
+  @@index([tenantId])
+}
+
+model ReserveTransaction {
+  id        String   @id @default(cuid())
+  tenantId  String
+  reserveId String
+  reserve   Reserve  @relation(fields: [reserveId], references: [id], onDelete: Cascade)
+  date      DateTime
+  amount    Decimal  @db.Decimal(12, 2) // + Zuführung, - Entnahme
+  note      String?
+
+  @@index([tenantId])
+  @@index([reserveId])
+}
+
+// ---------- Kalender / Termine ----------
+
+enum AppointmentType {
+  BESICHTIGUNG
+  VERSAMMLUNG
+  WARTUNG
+  FRIST
+  SONSTIGES
+}
+
+model Appointment {
+  id         String          @id @default(cuid())
+  tenantId   String
+  title      String
+  type       AppointmentType @default(SONSTIGES)
+  start      DateTime
+  end        DateTime?
+  location   String?
+  note       String?
+  propertyId String?
+  property   Property?       @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  persons    Person[] // Teilnehmer (#74)
+  documents  Document[] // benötigte Unterlagen (#74)
+  createdAt  DateTime        @default(now())
+
+  @@index([tenantId])
+  @@index([start])
+}
+
+// ---------- Audit-Log (GoBD-Nachvollziehbarkeit) ----------
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model AuditLog {
+  id       String      @id @default(cuid())
+  tenantId String
+  userId   String?
+  userName String?
+  action   AuditAction
+  entity   String // Modellname, z. B. "Property"
+  entityId String?
+  summary  String? // menschenlesbare Kurzbeschreibung
+  createdAt DateTime   @default(now())
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+// ---------- E-Mail-Postausgang ----------
+
+enum LetterStatus {
+  ENTWURF // nur PDF erstellt
+  GEPLANT // im Postausgang, Versand nach Verzögerung (#79)
+  EINGEREICHT // an den Anbieter übergeben, in Bearbeitung
+  VERSENDET // gedruckt und an die Post übergeben
+  ZUGESTELLT
+  FEHLER
+}
+
+// Brief (#58): als PDF (DIN 5008) erstellt, optional per Pingen oder Deutsche Post versendet.
+model Letter {
+  id         String       @id @default(cuid())
+  tenantId   String
+  personId   String?
+  person     Person?      @relation(fields: [personId], references: [id], onDelete: SetNull)
+  recipient  String // Anschrift, Zeilen durch \n getrennt
+  subject    String
+  body       String
+  documentId String?
+  document   Document?    @relation("LetterPdf", fields: [documentId], references: [id], onDelete: SetNull)
+  attachments Document[]  @relation("LetterAttachments") // Anlagen, beim Versand angehängt (#66)
+  provider   String? // PINGEN | EPOST, null = nur PDF
+  providerId String? // Brief-ID beim Anbieter
+  options    Json? // Druck-/Versandoptionen (Farbe, Duplex, Produkt, Einschreiben)
+  status     LetterStatus @default(ENTWURF)
+  statusText String? // Status/Fehler im Wortlaut des Anbieters
+  sentAt     DateTime?
+  scheduledAt DateTime? // geplanter Versand (#79)
+  sentById   String?
+  statusEvents LetterStatusEvent[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([tenantId])
+}
+
+// Statusverlauf eines Briefes (#72): ein Eintrag je Statuswechsel.
+model LetterStatusEvent {
+  id         String       @id @default(cuid())
+  letterId   String
+  letter     Letter       @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  status     LetterStatus
+  statusText String?
+  at         DateTime     @default(now())
+
+  @@index([letterId])
+}
+
+enum EmailStatus {
+  ENTWURF
+  GEPLANT // im Postausgang, Versand nach Verzögerung (#79)
+  GESENDET
+  FEHLER
+}
+
+model EmailMessage {
+  id          String            @id @default(cuid())
+  tenantId    String
+  toAddress   String // eine oder mehrere Adressen, kommagetrennt
+  cc          String?
+  bcc         String?
+  subject     String
+  body        String // Text-Variante (bei formatierten Mails aus html abgeleitet)
+  html        String? // formatierte Fassung, serverseitig bereinigt (#56)
+  status      EmailStatus       @default(ENTWURF)
+  error       String?
+  sentAt      DateTime?
+  scheduledAt DateTime? // geplanter Versand (#79)
+  sentById    String? // Benutzer, der die Mail versendet hat (#44)
+  sentBy      User?             @relation(fields: [sentById], references: [id], onDelete: SetNull)
+  messageId   String? // eigene Message-ID, beim Versand gesetzt (#43)
+  references  String? // Message-IDs der Vorgänger (Antwort), leerzeichengetrennt
+  threadId    String? // Unterhaltung; null = eigene Unterhaltung (Schlüssel = id)
+  attachments EmailAttachment[]
+  createdAt   DateTime          @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, threadId])
+  @@index([tenantId, messageId])
+}
+
+// Angehängtes Dokument aus der Dokumentenablage.
+model EmailAttachment {
+  id         String       @id @default(cuid())
+  emailId    String
+  email      EmailMessage @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  documentId String
+  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([emailId])
+}
+
+// Flächenmodell (Gewerbe): Teilfläche aus dem Objekt-Pool über einen Zeitraum.
+// leaseId=null → Leerstand. outdoor=true → Außenfläche (zählt nicht zur Pool-Summe/NK).
+model AreaAllocation {
+  id          String    @id @default(cuid())
+  tenantId    String
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  leaseId     String?
+  lease       Lease?    @relation(fields: [leaseId], references: [id], onDelete: SetNull)
+  personId    String?
+  person      Person?   @relation(fields: [personId], references: [id], onDelete: SetNull)
+  label       String?
+  area        Decimal   @db.Decimal(12, 2)
+  pricePerSqm Decimal?  @db.Decimal(10, 2) // Miet-m²-Preis (optional)
+  outdoor     Boolean   @default(false)
+  from        DateTime
+  to          DateTime?
+  charges     Charge[]
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([propertyId])
+}
+
+// Kostenposition je Objekt und Abrechnungsjahr (BetrKV).
+model CostEntry {
+  id           String             @id @default(cuid())
+  tenantId     String
+  propertyId   String
+  property     Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  year         Int
+  type         CostType
+  amount       Decimal            @db.Decimal(12, 2)
+  method       AllocationMethodDb @default(AREA)
+  umlagefaehig Boolean            @default(true)
+  subcommunityId String? // nur Einheiten dieser Untergemeinschaft tragen die Kosten (#42)
+  subcommunity   Subcommunity?    @relation(fields: [subcommunityId], references: [id], onDelete: SetNull)
+  // Nur bei Heiz-/Warmwasserkosten: Verbrauchsanteil in % (50–100). null →
+  // Mandanten-Standard (Tenant.heatingConsumptionPct) → 70.
+  consumptionSharePct Int?
+  note         String?
+  createdAt    DateTime           @default(now())
+
+  @@index([tenantId])
+  @@index([propertyId, year])
+}
+
+// ---------- Nischen-Module ----------
+
+enum InsuranceType {
+  GEBAEUDE
+  HAFTPFLICHT
+  GLAS
+  ELEMENTAR
+  RECHTSSCHUTZ
+  SONSTIGES
+}
+
+model Insurance {
+  id         String        @id @default(cuid())
+  tenantId   String
+  propertyId String
+  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  type       InsuranceType
+  insurer    String
+  policyNo   String?
+  premium    Decimal       @default(0) @db.Decimal(10, 2) // Jahresprämie
+  startDate  DateTime?
+  endDate    DateTime?
+  note       String?
+  createdAt  DateTime      @default(now())
+
+  @@index([tenantId])
+  @@index([propertyId])
+}
+
+// Grundsteuer (Reform 2025): Werte je Objekt, Jahresbetrag = Messbetrag * Hebesatz/100.
+model PropertyTax {
+  id             String   @id @default(cuid())
+  tenantId       String
+  propertyId     String   @unique
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  aktenzeichen   String?
+  grundsteuerwert Decimal? @db.Decimal(14, 2)
+  messbetrag     Decimal? @db.Decimal(12, 2)
+  hebesatz       Decimal? @db.Decimal(6, 2) // Prozent
+  note           String?
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId])
+}

@@ -1,0 +1,474 @@
+import { z } from "zod";
+import { routing } from "@/i18n/routing";
+import { normalizePostalAddress, postalAddressError } from "@/lib/postal-address";
+
+// notice: Ergebnis des Postausgangs (#79) für die Rückmeldung im Dialog
+export type ActionState = { ok?: boolean; error?: string; notice?: "sent" | "queued" | "draft" | "failed" };
+
+const optionalStr = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v ? v : undefined));
+
+const optionalDate = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v ? new Date(v) : undefined));
+
+// Dezimalzahl aus Formular/Import/API: akzeptiert "53.9" und "53,9"
+// (Komma nur, wenn kein Punkt vorkommt, damit "1.000,5" nicht falsch gelesen wird).
+export function parseDecimal(v: string): number {
+  const s = v.trim().replace(/\s/g, "");
+  if (s.includes(",") && s.includes(".")) return Number(s.replace(/\./g, "").replace(",", "."));
+  return Number(s.replace(",", "."));
+}
+
+const optionalNum = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v ? parseDecimal(v) : undefined))
+  .refine((v) => v === undefined || Number.isFinite(v), "Ungültige Zahl");
+
+// MEA/Anteile: Dezimalzahl ≥ 0, auf 4 Nachkommastellen gerundet (#40).
+const round4 = (n: number) => Math.round(n * 10_000) / 10_000;
+
+export const propertySchema = z.object({
+  name: z.string().trim().min(1),
+  street: z.string().trim().min(1),
+  zip: z.string().trim().min(1),
+  city: z.string().trim().min(1),
+  type: z.enum(["WOHNEN", "GEWERBE", "GEMISCHT"]),
+  management: z.enum(["MIET", "WEG"]),
+  meaTotal: optionalNum
+    .refine((v) => v === undefined || v > 0, "MEA-Summe muss größer 0 sein")
+    .transform((v) => (v === undefined ? undefined : round4(v))),
+  feeType: z.enum(["PAUSCHAL", "PRO_EINHEIT", "PROZENT"]),
+  feeValue: optionalNum,
+  areaModel: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v === "true"),
+  totalArea: optionalNum,
+});
+
+export const buildingSchema = z.object({
+  propertyId: z.string().min(1),
+  name: z.string().trim().min(1),
+});
+
+// Beim Bearbeiten wird nur der Name geändert; propertyId sendet das Formular
+// nicht mit (sonst „expected string, received undefined").
+export const buildingUpdateSchema = buildingSchema.omit({ propertyId: true });
+
+export const unitSchema = z.object({
+  buildingId: z.string().min(1),
+  label: z.string().trim().min(1),
+  type: z.enum(["WOHNUNG", "GEWERBE", "STELLPLATZ", "KELLER", "SONSTIGES"]),
+  area: z
+    .string()
+    .transform(parseDecimal)
+    .refine((v) => Number.isFinite(v) && v >= 0, "Ungültige Fläche"),
+  rooms: optionalNum.refine((v) => v === undefined || v >= 0, "Ungültige Zimmerzahl"),
+  mea: optionalNum
+    .refine((v) => v === undefined || v >= 0, "MEA darf nicht negativ sein")
+    .transform((v) => (v === undefined ? undefined : round4(v))),
+});
+
+// Beim Bearbeiten ändert sich die Gebäude-Zuordnung nicht → buildingId nicht
+// verlangen (sonst schlägt die Validierung fehl, weil das Edit-Formular es nicht
+// mitsendet).
+export const unitUpdateSchema = unitSchema.omit({ buildingId: true });
+
+export const personSchema = z.object({
+  firstName: z.string().trim().min(1),
+  lastName: z.string().trim().min(1),
+  email: optionalStr,
+  phone: optionalStr,
+  type: z.enum(["MIETER", "EIGENTUEMER", "INTERESSENT", "HANDWERKER", "MAKLER", "BANK", "SONSTIGE"]),
+  note: optionalStr,
+  // Bankverbindung (#45): IBAN ohne Leerzeichen, groß geschrieben gespeichert
+  iban: optionalStr
+    .transform((v) => (v ? v.replace(/\s/g, "").toUpperCase() : undefined))
+    .refine((v) => v === undefined || isValidIban(v), "Ungültige IBAN"),
+  accountHolder: optionalStr,
+  // Postanschrift ohne Namen (#58), versandfähig normalisiert und geprüft (#71)
+  address: optionalStr
+    .transform((v) => (v ? normalizePostalAddress(v).join("\n") : undefined))
+    .superRefine((v, ctx) => {
+      const err = v === undefined ? null : postalAddressError(v.split("\n"));
+      if (err) ctx.addIssue({ code: "custom", message: err });
+    }),
+});
+
+// IBAN-Prüfsumme (ISO 13616, mod 97).
+export function isValidIban(raw: string): boolean {
+  const s = raw.replace(/\s/g, "").toUpperCase();
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(s)) return false;
+  let m = 0;
+  for (const c of s.slice(4) + s.slice(0, 4)) {
+    const n = parseInt(c, 36);
+    m = (n > 9 ? m * 100 + n : m * 10 + n) % 97;
+  }
+  return m === 1;
+}
+
+export const meterSchema = z.object({
+  unitId: z.string().min(1),
+  type: z.enum(["STROM", "GAS", "WASSER_KALT", "WASSER_WARM", "WAERME"]),
+  serialNo: z.string().trim().min(1),
+});
+
+export const readingSchema = z.object({
+  meterId: z.string().min(1),
+  date: z.coerce.date(),
+  value: z.coerce.number().nonnegative(),
+});
+
+export const leaseCreateSchema = z.object({
+  unitId: z.string().min(1),
+  // Einzelperson für die REST-API (api-write); das Web-Formular nutzt personIds
+  // (Mehrfachauswahl) und liest diese separat via FormData.getAll.
+  personId: optionalStr,
+  startDate: z.coerce.date(),
+  endDate: optionalDate,
+  rentCold: z.coerce.number().nonnegative(),
+  personCount: z.coerce.number().int().positive(),
+  noticePeriodM: optionalNum,
+});
+
+export const leaseUpdateSchema = z.object({
+  unitId: z.string().min(1),
+  startDate: z.coerce.date(),
+  endDate: optionalDate,
+  rentCold: z.coerce.number().nonnegative(),
+  personCount: z.coerce.number().int().positive(),
+  noticePeriodM: optionalNum,
+});
+
+export const rentComponentSchema = z.object({
+  leaseId: z.string().min(1),
+  type: z.enum(["NEBENKOSTEN", "HEIZKOSTEN", "STELLPLATZ", "MODERNISIERUNG", "SONSTIGES"]),
+  amount: z.coerce.number().nonnegative(),
+  note: optionalStr,
+});
+
+export const rentAdjustmentSchema = z.object({
+  leaseId: z.string().min(1),
+  type: z.enum(["STAFFEL", "INDEX"]),
+  effectiveDate: z.coerce.date(),
+  newRentCold: z.coerce.number().nonnegative(),
+  indexBase: optionalNum,
+  indexNew: optionalNum,
+  note: optionalStr,
+});
+
+export const depositSchema = z.object({
+  leaseId: z.string().min(1),
+  type: z.enum(["BAR", "BUERGSCHAFT", "VERPFAENDET", "KAUTIONSKONTO"]),
+  amount: z.coerce.number().nonnegative(),
+  accountId: optionalStr,
+  interestRate: optionalNum,
+  receivedDate: optionalDate,
+  returnedDate: optionalDate,
+  note: optionalStr,
+});
+
+export const renterSchema = z.object({
+  leaseId: z.string().min(1),
+  personId: z.string().min(1),
+});
+
+export const accountSchema = z.object({
+  name: z.string().trim().min(1),
+  type: z.enum(["BANK", "KAUTION", "RUECKLAGE", "SACHKONTO"]),
+  iban: optionalStr,
+});
+
+export const chargeSchema = z.object({
+  leaseId: optionalStr,
+  type: z.enum(["MIETE", "NEBENKOSTEN", "HAUSGELD", "KAUTION", "SONSTIGES"]),
+  period: z.coerce.date(),
+  dueDate: z.coerce.date(),
+  amount: z.coerce.number(),
+  description: optionalStr,
+});
+
+export const paymentSchema = z.object({
+  chargeId: optionalStr,
+  accountId: optionalStr,
+  date: z.coerce.date(),
+  amount: z.coerce.number(),
+  direction: z.enum(["EINGANG", "AUSGANG"]),
+  reference: optionalStr,
+});
+
+export const mandateSchema = z.object({
+  personId: z.string().min(1),
+  iban: z.string().trim().min(1),
+  mandateRef: z.string().trim().min(1),
+  signedDate: z.coerce.date(),
+});
+
+// month als "YYYY-MM"
+export const generateSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+});
+
+export const costEntrySchema = z.object({
+  propertyId: z.string().min(1),
+  year: z.coerce.number().int().min(2000).max(2100),
+  type: z.enum([
+    "GRUNDSTEUER", "WASSER", "ENTWAESSERUNG", "HEIZUNG", "WARMWASSER", "AUFZUG",
+    "STRASSENREINIGUNG", "MUELL", "GEBAEUDEREINIGUNG", "GARTENPFLEGE", "BELEUCHTUNG",
+    "SCHORNSTEIN", "VERSICHERUNG", "HAUSWART", "KABEL", "INSTANDHALTUNG", "VERWALTUNG", "SONSTIGE",
+  ]),
+  amount: z.coerce.number().nonnegative(),
+  method: z.enum(["AREA", "UNITS", "PERSONS", "CONSUMPTION", "MEA"]),
+  umlagefaehig: z.enum(["true", "false"]).transform((v) => v === "true"),
+  subcommunityId: optionalStr, // nur Einheiten dieser Untergemeinschaft (#42)
+  // HeizkostenV-Verbrauchsanteil % (nur Heizung/Warmwasser). Leer → Mandanten-Standard.
+  consumptionSharePct: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v ? Math.min(100, Math.max(0, parseInt(v, 10))) : undefined)),
+  note: optionalStr,
+});
+
+export const ownerSchema = z.object({
+  personId: z.string().min(1),
+  unitId: z.string().min(1),
+  share: z
+    .union([z.number(), z.string()])
+    .transform((v) => round4(typeof v === "number" ? v : parseDecimal(v)))
+    .refine((v) => Number.isFinite(v) && v > 0 && v <= 1000, "Anteil muss zwischen 0 und 1000 ‰ liegen"),
+});
+
+export const areaAllocationSchema = z.object({
+  propertyId: z.string().min(1),
+  leaseId: optionalStr,
+  personId: optionalStr,
+  label: optionalStr,
+  area: z.coerce.number().nonnegative(),
+  pricePerSqm: optionalNum,
+  outdoor: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v === "true"),
+  from: z.coerce.date(),
+  to: optionalDate,
+});
+
+export const economicPlanSchema = z.object({
+  propertyId: z.string().min(1),
+  year: z.coerce.number().int().min(2000).max(2100),
+  totalAmount: z.coerce.number().nonnegative(),
+  note: optionalStr,
+});
+
+export const reserveSchema = z.object({
+  propertyId: z.string().min(1),
+  name: z.string().trim().min(1),
+  subcommunityId: optionalStr, // Untergemeinschaft (#42), leer = Gesamt-WEG
+});
+
+export const subcommunitySchema = z.object({
+  propertyId: z.string().min(1),
+  name: z.string().trim().min(1),
+});
+
+export const reserveTxSchema = z.object({
+  reserveId: z.string().min(1),
+  date: z.coerce.date(),
+  amount: z.coerce.number(),
+  note: optionalStr,
+});
+
+export const meetingCreateSchema = z.object({
+  propertyId: z.string().min(1),
+  title: z.string().trim().min(1),
+  date: z.coerce.date(),
+  location: optionalStr,
+  status: z.enum(["GEPLANT", "DURCHGEFUEHRT"]),
+});
+
+export const meetingUpdateSchema = z.object({
+  title: z.string().trim().min(1),
+  date: z.coerce.date(),
+  location: optionalStr,
+  status: z.enum(["GEPLANT", "DURCHGEFUEHRT"]),
+  protocol: optionalStr,
+});
+
+export const agendaSchema = z.object({
+  meetingId: z.string().min(1),
+  title: z.string().trim().min(1),
+  description: optionalStr,
+});
+
+export const setupSchema = z.object({
+  tenantName: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  email: z.string().trim().email(),
+  password: z.string().min(6),
+  locale: z.enum(routing.locales),
+  brandColor: optionalStr,
+  // optionales erstes Objekt
+  propertyName: optionalStr,
+  propertyStreet: optionalStr,
+  propertyZip: optionalStr,
+  propertyCity: optionalStr,
+});
+
+export const brandingSchema = z.object({
+  brandColor: optionalStr,
+});
+
+export const insuranceSchema = z.object({
+  propertyId: z.string().min(1),
+  type: z.enum(["GEBAEUDE", "HAFTPFLICHT", "GLAS", "ELEMENTAR", "RECHTSSCHUTZ", "SONSTIGES"]),
+  insurer: z.string().trim().min(1),
+  policyNo: optionalStr,
+  premium: z.coerce.number().nonnegative(),
+  startDate: optionalDate,
+  endDate: optionalDate,
+  note: optionalStr,
+});
+
+export const propertyTaxSchema = z.object({
+  propertyId: z.string().min(1),
+  aktenzeichen: optionalStr,
+  grundsteuerwert: optionalNum,
+  messbetrag: optionalNum,
+  hebesatz: optionalNum,
+  note: optionalStr,
+});
+
+export const templateSchema = z.object({
+  category: z.enum(["ANSCHREIBEN", "ABRECHNUNG", "MAHNUNG", "VERTRAG", "PROTOKOLL", "SONSTIGES"]),
+  name: z.string().trim().min(1),
+  subject: optionalStr,
+  body: z.string().trim().min(1),
+});
+
+export const customFieldDefSchema = z.object({
+  entity: z.enum(["PROPERTY", "UNIT", "PERSON", "LEASE"]),
+  key: z
+    .string()
+    .trim()
+    .min(1)
+    .regex(/^[a-z0-9_]+$/, "Nur Kleinbuchstaben, Ziffern, Unterstrich"),
+  label: z.string().trim().min(1),
+});
+
+export const taskSchema = z.object({
+  title: z.string().trim().min(1),
+  dueDate: optionalDate,
+});
+
+export const appointmentSchema = z.object({
+  title: z.string().trim().min(1),
+  type: z.enum(["BESICHTIGUNG", "VERSAMMLUNG", "WARTUNG", "FRIST", "SONSTIGES"]),
+  start: z.coerce.date(),
+  end: optionalDate,
+  location: optionalStr,
+  propertyId: optionalStr,
+  note: optionalStr,
+});
+
+// Eine oder mehrere Adressen, komma-/semikolongetrennt.
+const emailList = z
+  .string()
+  .trim()
+  .refine((v) => v.split(/[,;]/).every((e) => /.+@.+\..+/.test(e.trim())), "Ungültige E-Mail-Adresse");
+
+export const emailSchema = z.object({
+  toAddress: emailList,
+  cc: optionalStr,
+  bcc: optionalStr,
+  subject: z.string().trim().min(1),
+  body: z.string().trim().min(1),
+});
+
+const roleEnum = z.enum(["ADMIN", "VERWALTER", "BUCHHALTUNG", "BEIRAT", "EIGENTUEMER", "MIETER", "HANDWERKER"]);
+
+export const userCreateSchema = z.object({
+  name: z.string().trim().min(1),
+  email: z.string().trim().email(),
+  password: z.string().min(6),
+  role: roleEnum,
+  personId: optionalStr,
+});
+
+export const userEditSchema = z.object({
+  name: z.string().trim().min(1),
+  email: z.string().trim().email(),
+  role: roleEnum,
+  personId: optionalStr,
+});
+
+export const DOCUMENT_CATEGORIES = ["VERTRAG", "RECHNUNG", "ERECHNUNG", "PROTOKOLL", "ABRECHNUNG", "EMAIL_ANHANG", "BRIEF", "BESCHEINIGUNG", "SONSTIGES"] as const;
+
+export const documentEditSchema = z.object({
+  name: z.string().trim().min(1),
+  category: z.enum(DOCUMENT_CATEGORIES),
+  propertyId: optionalStr,
+  unitId: optionalStr,
+  personId: optionalStr,
+});
+
+export const contractorSchema = z.object({
+  name: z.string().trim().min(1),
+  trade: z.string().trim().min(1),
+  email: optionalStr,
+  phone: optionalStr,
+});
+
+const ticketBase = {
+  title: z.string().trim().min(1),
+  description: optionalStr,
+  category: z.enum(["STOERUNG", "SCHADEN", "WARTUNG", "RECHNUNG", "VERTRAG", "SONSTIGES"]),
+  priority: z.enum(["NIEDRIG", "MITTEL", "HOCH"]),
+  propertyId: optionalStr,
+  unitId: optionalStr,
+  contractorId: optionalStr,
+  assigneeId: optionalStr,
+  dueDate: optionalDate,
+  reminderDate: optionalDate,
+};
+
+export const ticketCreateSchema = z.object(ticketBase);
+export const ticketUpdateSchema = z.object({
+  ...ticketBase,
+  status: z.enum(["OFFEN", "IN_ARBEIT", "WARTEND", "ERLEDIGT"]),
+});
+
+export const ticketTimeSchema = z.object({
+  id: z.string().min(1),
+  minutes: z.coerce.number().int().positive(),
+});
+
+export const maintenanceSchema = z.object({
+  propertyId: z.string().min(1),
+  contractorId: optionalStr,
+  title: z.string().trim().min(1),
+  intervalMonths: z.coerce.number().int().positive(),
+  nextDue: z.coerce.date(),
+  note: optionalStr,
+});
+
+export const resolutionSchema = z.object({
+  propertyId: z.string().min(1),
+  meetingId: optionalStr,
+  title: z.string().trim().min(1),
+  text: z.string().trim().min(1),
+  date: z.coerce.date(),
+  result: z.enum(["ANGENOMMEN", "ABGELEHNT", "VERTAGT"]),
+  votesYes: z.coerce.number().int().min(0),
+  votesNo: z.coerce.number().int().min(0),
+  votesAbstain: z.coerce.number().int().min(0),
+  subcommunityId: optionalStr, // Beschluss einer Untergemeinschaft (#42)
+});

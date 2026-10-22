@@ -1,0 +1,108 @@
+import { describe, it, expect } from "vitest";
+import { generateKeyPairSync, createVerify } from "node:crypto";
+import { buildJwt, mapTransaction, pickBalance } from "./enablebanking";
+
+const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+
+const decode = (part: string) => JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
+
+describe("buildJwt", () => {
+  const now = 1_700_000_000_000;
+  const jwt = buildJwt("app-123", pem, now);
+  const [h, b, s] = jwt.split(".");
+
+  it("Header: RS256 + kid = Application-ID", () => {
+    expect(decode(h)).toEqual({ typ: "JWT", alg: "RS256", kid: "app-123" });
+  });
+
+  it("Body: iss/aud/iat/exp (exp = iat + 1h, <= 24h)", () => {
+    const body = decode(b);
+    expect(body.iss).toBe("enablebanking.com");
+    expect(body.aud).toBe("api.enablebanking.com");
+    expect(body.iat).toBe(Math.floor(now / 1000));
+    expect(body.exp - body.iat).toBe(3600);
+    expect(body.exp - body.iat).toBeLessThanOrEqual(86400);
+  });
+
+  it("Signatur mit dem Private Key gültig", () => {
+    const ok = createVerify("RSA-SHA256").update(`${h}.${b}`).end().verify(publicKey, Buffer.from(s, "base64url"));
+    expect(ok).toBe(true);
+  });
+});
+
+describe("mapTransaction", () => {
+  it("Eingang (CRDT)", () => {
+    expect(
+      mapTransaction({
+        transaction_amount: { amount: "850.00", currency: "EUR" },
+        credit_debit_indicator: "CRDT",
+        booking_date: "2026-02-15",
+        remittance_information: ["Miete", "Februar"],
+        entry_reference: "TX-1",
+      }),
+    ).toMatchObject({
+      legacyId: "TX-1", amount: 850, direction: "EINGANG", date: "2026-02-15", reference: "Miete Februar",
+      counterparty: null, counterpartyIban: null,
+    });
+  });
+
+  it("Gegenseite: Zahler bei Eingang, Empfänger bei Ausgang (#60)", () => {
+    const parties = {
+      debtor: { name: "Max Mieter" }, debtor_account: { iban: "DE02 1203 0000 0000 2020 51" },
+      creditor: { name: "Stadtwerke" }, creditor_account: { iban: "DE89370400440532013000" },
+    };
+    const inc = mapTransaction({ ...parties, credit_debit_indicator: "CRDT" });
+    expect([inc.counterparty, inc.counterpartyIban]).toEqual(["Max Mieter", "DE02120300000000202051"]);
+    const out = mapTransaction({ ...parties, credit_debit_indicator: "DBIT" });
+    expect([out.counterparty, out.counterpartyIban]).toEqual(["Stadtwerke", "DE89370400440532013000"]);
+  });
+
+  it("Ausgang (DBIT), Fallback value_date + transaction_id", () => {
+    const m = mapTransaction({
+      transaction_amount: { amount: "12.5" },
+      credit_debit_indicator: "DBIT",
+      value_date: "2026-03-01",
+      transaction_id: "T2",
+    });
+    expect(m.direction).toBe("AUSGANG");
+    expect(m.amount).toBe(12.5);
+    expect(m.date).toBe("2026-03-01");
+    expect(m.legacyId).toBe("T2");
+    expect(m.externalId).toMatch(/^eb:[0-9a-f]{32}$/);
+    expect(m.reference).toBeNull();
+  });
+});
+
+describe("pickBalance (#57)", () => {
+  it("bevorzugt den gebuchten Tagesendsaldo", () => {
+    const b = pickBalance([
+      { balance_type: "ITAV", balance_amount: { amount: "900.00", currency: "EUR" } },
+      { balance_type: "CLBD", balance_amount: { amount: "1234.56", currency: "EUR" }, reference_date: "2026-10-03" },
+    ]);
+    expect(b).toEqual({ amount: 1234.56, currency: "EUR", date: "2026-10-03" });
+  });
+  it("unbekannte Art: erster Eintrag, Datum aus last_change_date_time", () => {
+    expect(pickBalance([{ balance_type: "XYZ", balance_amount: { amount: -5 }, last_change_date_time: "2026-10-04T08:00:00Z" }]))
+      .toEqual({ amount: -5, currency: "EUR", date: "2026-10-04" });
+  });
+  it("leer oder ohne Betrag: null", () => {
+    expect(pickBalance([])).toBeNull();
+    expect(pickBalance([{ balance_type: "CLBD" }])).toBeNull();
+  });
+
+  // #73: Daueraufträge mit wiederverwendeter entry_reference dürfen nicht kollidieren.
+  it("Dauerauftrag: gleiche entry_reference, anderer Monat → anderer Dedup-Schlüssel", () => {
+    const base = { transaction_amount: { amount: "850" }, credit_debit_indicator: "CRDT", entry_reference: "DA-1", remittance_information: ["Miete"] };
+    const jan = mapTransaction({ ...base, booking_date: "2026-01-01" });
+    const feb = mapTransaction({ ...base, booking_date: "2026-02-01" });
+    expect(jan.externalId).not.toBe(feb.externalId);
+    expect(mapTransaction({ ...base, booking_date: "2026-01-01" }).externalId).toBe(jan.externalId); // stabil
+  });
+
+  it("ohne Bank-ID trotzdem importierbar", () => {
+    const m = mapTransaction({ transaction_amount: { amount: "5" }, credit_debit_indicator: "CRDT", booking_date: "2026-01-01" });
+    expect(m.externalId).toMatch(/^eb:/);
+    expect(m.legacyId).toBeNull();
+  });
+});

@@ -1,0 +1,91 @@
+import { Plus, Receipt } from "lucide-react";
+import { getTranslations } from "next-intl/server";
+import { Button } from "@/components/ui/button";
+import { CrudDialog } from "@/components/crud-dialog";
+import { TextField, SelectField } from "@/components/form-fields";
+import { createCost } from "@/server/actions/costs";
+import { ScopeField } from "@/components/weg-dialogs";
+
+const COST_TYPES = [
+  "GRUNDSTEUER", "WASSER", "ENTWAESSERUNG", "HEIZUNG", "WARMWASSER", "AUFZUG",
+  "STRASSENREINIGUNG", "MUELL", "GEBAEUDEREINIGUNG", "GARTENPFLEGE", "BELEUCHTUNG",
+  "SCHORNSTEIN", "VERSICHERUNG", "HAUSWART", "KABEL", "INSTANDHALTUNG", "VERWALTUNG", "SONSTIGE",
+];
+const METHODS = ["AREA", "UNITS", "PERSONS", "CONSUMPTION", "MEA"];
+
+export async function CostDialog({
+  propertyId,
+  year,
+  subcommunities = [],
+  properties,
+  defaults,
+}: {
+  propertyId?: string | null;
+  year: number;
+  subcommunities?: { value: string; label: string }[]; // Untergemeinschaften (#42)
+  /** Aus Dokument (#64): Objekt und Jahr wählbar, Betrag/Notiz vorbefüllt. */
+  properties?: { value: string; label: string }[];
+  defaults?: { amount?: string; note?: string };
+}) {
+  const t = await getTranslations();
+  const typeOpts = await getTranslations("costType").then((tt) =>
+    COST_TYPES.map((k) => ({ value: k, label: tt(k) })),
+  );
+  const methodOpts = await getTranslations("allocationMethod").then((tt) =>
+    METHODS.map((k) => ({ value: k, label: tt(k) })),
+  );
+
+  return (
+    <CrudDialog
+      trigger={
+        properties ? (
+          <Button variant="ghost" size="icon" aria-label={t("documents.toCost")} title={t("documents.toCost")}>
+            <Receipt className="size-4" />
+          </Button>
+        ) : (
+          <Button size="sm">
+            <Plus className="size-4" />
+            {t("statements.addCost")}
+          </Button>
+        )
+      }
+      title={t("statements.addCost")}
+      action={createCost}
+      submitLabel={t("common.create")}
+    >
+      {properties ? (
+        <>
+          <SelectField name="propertyId" label={t("units.property")} options={properties} defaultValue={propertyId ?? undefined} />
+          <TextField name="year" label={t("statements.year")} type="number" defaultValue={year} />
+        </>
+      ) : (
+        <>
+          <input type="hidden" name="propertyId" value={propertyId ?? ""} />
+          <input type="hidden" name="year" value={year} />
+        </>
+      )}
+      <SelectField name="type" label={t("fields.type")} options={typeOpts} />
+      <TextField name="amount" label={t("fields.amount")} type="number" step="0.01" defaultValue={defaults?.amount} />
+      <SelectField name="method" label={t("statements.method")} options={methodOpts} />
+      {subcommunities.length > 0 && (
+        <ScopeField subcommunities={subcommunities} label={t("weg.scope")} wholeLabel={t("weg.wholeCommunity")} />
+      )}
+      <TextField
+        name="consumptionSharePct"
+        label={t("statements.consumptionShare")}
+        type="number"
+        required={false}
+      />
+      <SelectField
+        name="umlagefaehig"
+        label={t("statements.umlagefaehig")}
+        defaultValue="true"
+        options={[
+          { value: "true", label: t("common.yes") },
+          { value: "false", label: t("common.no") },
+        ]}
+      />
+      <TextField name="note" label={t("rentComponent.note")} required={false} defaultValue={defaults?.note} />
+    </CrudDialog>
+  );
+}

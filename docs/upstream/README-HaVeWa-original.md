@@ -1,0 +1,279 @@
+# HaVeWa ÔÇö Property Management
+
+_­ƒç¼­ƒçº English ┬À ­ƒç®­ƒç¬ [Deutsch](README.de.md)_
+
+[![QuickRun](https://quickrun.org/badge.svg)](https://quickrun.org/run?repo=fgilde/hausverwaltung)
+
+­ƒôû **[Documentation & help](https://fgilde.github.io/hausverwaltung/docs/)** ┬À ­ƒîÉ **[Website](https://fgilde.github.io/hausverwaltung/)**
+
+Complete property-management software for **rental and HOA (WEG) administration**.
+Multi-tenant, role-based, bilingual (DE/EN).
+
+## Features
+
+Properties/units/people/meters ┬À rental management (leases, stepped/index rent,
+deposits) ┬À finances (charges, payments, open items, SEPA mandates, dunning +
+portfolio-wide dunning dashboard) ┬À service-charge statements (BetrKV, allocation
+engine) ┬À HOA (co-ownership shares, economic plan, HOA fees, annual statement,
+reserves, asset report) ┬À owners' meetings (agenda, voting, ┬º24 resolution
+collection) ┬À documents (GoBD, e-invoice) ┬À maintenance (tickets with
+workflow/time-tracking, contractors, service intervals) ┬À management fees ┬À
+deposit accounts ┬À templates/mail merge ┬À custom fields ┬À report manager ┬À
+insurance ┬À property tax ┬À census ┬À tenant/owner portals ┬À camt.053 import +
+DATEV/SEPA export ┬À calendar ┬À email (in/out) ┬À letters (DIN 5008, sent via Pingen or Deutsche Post) ┬À dashboard ┬À **REST API + MCP server for AI
+agents** (per-user tokens).
+
+## Tech stack
+
+Next.js 16 (App Router) ┬À TypeScript ┬À PostgreSQL ┬À Prisma ┬À shadcn/ui + Tailwind ┬À
+next-intl ┬À Auth.js ┬À OpenAPI 3.1 + Scalar ┬À Vitest.
+
+## Local development
+
+Requirements: Node 20+, Docker (for Postgres).
+
+```bash
+npm install
+cp .env.example .env        # DATABASE_URL points to localhost:5432
+npm run db:up               # Postgres via docker-compose.yml
+npm run db:migrate          # apply migrations
+npm run dev                 # http://localhost:3000
+```
+
+## First-run setup ÔÇö with or without demo data
+
+After `db:migrate` the database is empty (no users). On first visit a **setup
+wizard** (`/setup`) appears automatically and creates the first tenant and the
+administrator (including an optional theme colour). Afterwards the wizard is locked.
+
+- **Without demo data (production):** run only `db:migrate`, then complete the wizard.
+- **With demo data (to try it out):** additionally run `npm run db:seed` ÔÇö creates
+  a sample tenant with properties and three demo logins:
+
+| Role | Email | Password | Area |
+|---|---|---|---|
+| Administrator | `admin@havewa.app` | `admin` | Manager app (full access) |
+| Tenant | `mieter@havewa.app` | `mieter` | Tenant portal (`/portal`) |
+| Owner | `eigentuemer@havewa.app` | `eigentuemer` | Owner portal (`/portal`) |
+
+Further accounts are created by the administrator under **Settings ÔåÆ Users**.
+
+> In Docker you can skip the wizard and pre-provision tenant + admin (or seed demo
+> data) via environment variables ÔÇö see [Optional first-run bootstrap](#optional-first-run-bootstrap-all-optional).
+
+## Configuration (AI, email, branding)
+
+**Settings** is organised into tabs (General ┬À AI & API ┬À Email ┬À Users ┬À Advanced),
+per tenant, admin only:
+
+- **AI assistant** ÔÇö provider is selectable: **Anthropic (Claude)** or any
+  **OpenAI-compatible** endpoint (OpenAI, OpenRouter, Groq, Ollama, ÔÇª) via base URL +
+  model. Without a key the assistant returns a rule-based summary.
+- **Email** ÔÇö SMTP outbox; without SMTP the outbox is kept locally only.
+- **Branding** ÔÇö tenant name, theme colour and logo.
+
+Adapters also fall back to `ANTHROPIC_API_KEY`, `SMTP_HOST`, etc. from the environment.
+
+## API & MCP (for integrations and AI agents)
+
+Every user creates personal **API tokens** under **Settings ÔåÆ AI & API** (an admin
+can also issue tokens for other users). Authenticate with `Authorization: Bearer <token>`.
+
+- **REST API** at `/api/v1` ÔÇö read + write across all modules (properties, units,
+  leases, finances, meetings, resolutions, documents, WEG plans, insurance, tax ÔÇª),
+  plus operations (charge run, dunning run, apply rent adjustment, bank import,
+  send email, upload document ÔÇª). Interactive reference (Scalar) at `/api-reference`,
+  OpenAPI spec at `/api/v1/openapi.json`.
+- **MCP server** (Model Context Protocol) at `/api/mcp` ÔÇö connect Claude Desktop,
+  ChatGPT or any MCP client so an AI can read **and manage** the portfolio. The exact
+  URLs and a ready-to-paste client config are shown under **Settings ÔåÆ AI & API**.
+
+Tokens are stored hashed (only a `hvw_ÔÇª` prefix is kept); writes require a writing
+role, config operations require admin. All access is scoped to the token's tenant.
+
+## Scripts
+
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` / `npm start` | Production build / start |
+| `npm test` | Vitest (engine, statements, validation ÔÇª) |
+| `npm run db:up` | Postgres container (local) |
+| `npm run db:migrate` | Prisma migration (dev) |
+| `npm run db:seed` | Demo data (optional) |
+| `npm run db:studio` | Prisma Studio |
+
+## Project structure
+
+```
+prisma/schema.prisma          data model + migrations
+messages/{de,en}.json         translations (new language = new file)
+src/
+  app/[locale]/(admin)/...     manager app (internal roles)
+  app/[locale]/portal/...      tenant/owner portal
+  app/[locale]/setup/...       first-run setup wizard
+  app/api/v1/...               REST API v1 (Bearer) incl. records + operations
+  app/api/mcp/                 MCP server (JSON-RPC, Bearer)
+  app/api-reference/           Scalar API reference
+  app/api/...                  auth, downloads, exports, logo
+  lib/allocation/              allocation engine (shared rental + HOA)
+  lib/adapters/                camt.053 / DATEV / SEPA / e-invoice / mailer
+  lib/api-data.ts              shared read layer (REST + MCP)
+  lib/api-write.ts             generic CRUD write layer (REST + MCP)
+  lib/api-ops.ts               operations (charge/dunning run, apply adjustment ÔÇª)
+  lib/storage.ts               file storage (documents, logo)
+  server/actions/              server actions per module (tenant-scoped, RBAC)
+  components/                  UI + form dialogs
+```
+
+## Persistence
+
+- **Database**: PostgreSQL (Prisma). Local Docker volume `havewa-db`.
+- **Files** (documents, logo): filesystem under `storage/` (volume in production),
+  wrapped in `src/lib/storage.ts` ÔÇö swap that one file for object storage (S3/Blob).
+
+## Deployment (VPS + Docker)
+
+A single server with Docker: Caddy (automatic HTTPS via Let's Encrypt) + app +
+Postgres via Compose. Requires a domain with a DNS A record and ports **80 + 443**.
+
+```bash
+git clone https://github.com/fgilde/hausverwaltung.git && cd hausverwaltung
+cp .env.prod.example .env    # DB_PASSWORD, AUTH_SECRET (openssl rand -base64 32), DOMAIN
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Migrations run automatically on container start. Persistence via the volumes
+`havewa-db`, `havewa-storage` (documents/logo) and `caddy-data` (certificates).
+Then do the first-run setup at `https://<DOMAIN>/setup`.
+
+**Prebuilt image (faster):** every push to `main` builds and publishes an image to
+`ghcr.io/fgilde/hausverwaltung:latest` (GitHub Actions). Each image is also tagged with
+its version: `0.4.0.92` (version from `package.json` + build number, as shown in the app),
+`0.4.0`, `0.4` and `sha-<commit>`, so you can pin a release. Deploy without building on
+the server via `docker-compose.registry.yml`:
+
+```bash
+docker compose -f docker-compose.registry.yml pull
+docker compose -f docker-compose.registry.yml up -d
+```
+
+### Environment variables (production)
+
+| Variable | Description |
+|---|---|
+| `DB_PASSWORD` | Postgres password (Compose builds `DATABASE_URL` from it) |
+| `AUTH_SECRET` | Session secret (`openssl rand -base64 32`) |
+| `DOMAIN` | Domain for Caddy/HTTPS (DNS must point to the server) |
+
+#### Optional first-run bootstrap (all optional)
+
+Applied once at container start while the system is still empty:
+
+| Variable | Effect |
+|---|---|
+| `SEED_DEMO=true` | Seed the demo dataset (admin `admin@havewa.app` / `admin`). `ADMIN_*`/`TENANT_NAME` are ignored. |
+| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | Create the tenant + admin directly ÔÇö **the setup wizard is skipped**. |
+| `ADMIN_NAME` | Admin display name (default `Admin`). |
+| `TENANT_NAME` | Tenant name (default `HaVeWa`). |
+
+If none are set, the setup wizard appears on first login (unchanged).
+
+#### Single sign-on (OIDC, optional)
+
+Set `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` (and optionally `OIDC_NAME`)
+to enable SSO via an identity provider (Authentik, Keycloak, ÔÇª). The login then
+shows a "Sign in with &lt;name&gt;" button. For safety **only users that already
+exist** can sign in (matched by email) ÔÇö role and tenant come from the existing
+user, there is no auto-provisioning. Redirect URI at the IdP:
+`https://<DOMAIN>/api/auth/callback/oidc`.
+
+#### Bank sync via open banking (optional)
+
+Under **Finances ÔåÆ Bank sync** an admin can store their own **Enable Banking**
+credentials (Application ID + private key, stored encrypted) ÔÇö each self-hosted
+instance brings its own app. Connect a bank via consent, then sync: transactions
+are booked as payments and auto-matched to open items. Redirect URL to register at
+Enable Banking: `https://<DOMAIN>/api/banking/callback`. Without it, `camt.053`
+import still works offline. See the [docs](https://fgilde.github.io/hausverwaltung/docs/).
+
+#### Multiple tenants (optional)
+
+One instance can host several data-separated tenants. The first admin is the
+**instance admin** and gets a **Tenants** page to create tenants (each with its own
+first admin), switch between them, and manage them. Existing installs auto-promote
+their oldest admin on the next start. Alternatively run one instance per company.
+
+## Home-server installs (Unraid ┬À Umbrel ┬À Proxmox)
+
+The packages live where each store looks for them: [`templates/havewa.xml`](templates/havewa.xml)
+and `ca_profile.xml` for Unraid, [`fgilde-havewa/`](fgilde-havewa/) beside `umbrel-app-store.yml`
+for Umbrel, [`store/casaos/`](store/casaos/) and [`store/cosmos/`](store/cosmos/) for CasaOS and
+Cosmos, and [`deploy/proxmox/`](deploy/proxmox/) for Proxmox VE. All use the prebuilt
+`ghcr.io/fgilde/hausverwaltung:latest` image.
+
+### Unraid
+
+1. **Docker ÔåÆ Add Container ÔåÆ Template**, load
+   `https://raw.githubusercontent.com/fgilde/hausverwaltung/main/templates/havewa.xml`
+   (or copy the file to `/boot/config/plugins/dockerMan/templates-user/`).
+2. Install **PostgreSQL 16** from Community Applications (`POSTGRES_USER=havewa`,
+   `POSTGRES_DB=havewa`, a password).
+3. In the HaVeWa template set `DATABASE_URL` to that Postgres, generate
+   `AUTH_SECRET` (`openssl rand -base64 32`), optionally `SEED_DEMO=true`. Start ÔÇö
+   WebUI on port `3000`.
+
+### Umbrel
+
+In Umbrel, *App Store ÔåÆ Ôï» ÔåÆ Community app stores*, add
+`https://github.com/fgilde/hausverwaltung` and install HaVeWa. The repository root is the store:
+`umbrel-app-store.yml` names it, [`fgilde-havewa/`](fgilde-havewa/) is the app. Postgres, secrets and storage are wired automatically; demo data is seeded
+on first start (turn off by removing `SEED_DEMO` in the compose).
+
+### CasaOS
+
+*App Store ÔåÆ Add source* with
+`https://github.com/fgilde/hausverwaltung/releases/download/store/casaos-appstore.zip`. The archive
+is rebuilt from [`store/casaos/`](store/casaos/) on every push. It brings its own Postgres; replace
+`AUTH_SECRET` in the install dialog, because the one in the package is public.
+
+### Cosmos
+
+[`store/cosmos/servapps/HaVeWa/`](store/cosmos/servapps/HaVeWa/) is a ServApp with its own Postgres.
+Its installer form asks for the session secret and generates the database password, so neither comes
+out of a public file.
+
+### Proxmox VE
+
+Run on the **PVE host** as root ÔÇö creates an unprivileged Debian LXC with PostgreSQL
+and Node, builds HaVeWa from the same release as the current Docker image (same version, e.g. 0.4.0.93) and leaves a systemd service behind:
+
+```bash
+bash -c "$(wget -qO- https://raw.githubusercontent.com/fgilde/hausverwaltung/main/deploy/proxmox/havewa.sh)"
+```
+
+Tunable via env (`CTID`, `RAM_MB`, `CORES`, `DISK_GB`, `BRIDGE`, `STORAGE`, `PORT`).
+Prints the container URL when done; update by running the script again inside the
+container: `pct exec <ctid> -- bash -c "$(wget -qO- .../deploy/proxmox/install.sh)"`.
+
+**No Docker in there, deliberately.** On a current Proxmox an unprivileged container
+runs no Docker container at all ÔÇö runc writes `net.ipv4.ip_unprivileged_port_start`
+and `/proc/sys` is read-only ÔÇö and a privileged container buys that back by handing
+the container root on the host. [`install.sh`](deploy/proxmox/install.sh) is the half
+that runs inside and works on any Debian machine; it keeps the database, the password
+and the uploaded documents across updates.
+
+## Known simplifications
+
+Marked with `ponytail:` comments in the code: HeizkostenV consumption allocation
+falls back to area without meter integration ┬À DATEV export is simplified CSV ┬À the
+time-based area model (`docs/flaechenmodell.md`) is specified as a draft but not yet
+implemented.
+
+## License
+
+HaVeWa is **dual-licensed**: the open-source **GNU AGPLv3** (see [`LICENSE`](./LICENSE))
+or a **commercial license** for closed-source/proprietary use. Details and contact in
+[`LICENSING.md`](./LICENSING.md).
+
+Copyright ┬® 2026 Florian Gilde.

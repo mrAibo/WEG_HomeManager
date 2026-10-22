@@ -3,8 +3,9 @@
 ## Observed repository state (22 Oct 2026)
 - New repository: `mrAibo/WEG_HomeManager`, public, currently independent (GitHub `fork=false`), initially only a README.
 - Intended upstream: `fgilde/hausverwaltung` (HaVeWa), AGPLv3 / commercial dual-licensing.
-- GitHub connector has write rights to the new repo but no direct "fork" action; local git network access is unavailable in this session.
-- This branch adds only original planning docs and a safe stand-alone prototype. No HaVeWa code has yet been imported.
+- Remote Aibo Windows desktop reconnected on 2026-10-22. Local Git network access is now available.
+- HaVeWa source **has been merged in a separate integration branch** based on the original AI-first foundation, retaining authorship/history; exact SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
+- See `docs/weg-homemanager/BASELINE_VERIFICATION.md` for test results, caveats and archived upstream release workflows.
 
 ## Recommended upstream import by a trusted local git client
 A reliable approach that preserves the existing independent repo:

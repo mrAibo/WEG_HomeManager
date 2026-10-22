@@ -1,53 +1,44 @@
-# WEG HomeManager — handoff for the next coding agent
+# WEG HomeManager — engineering handoff for next agent
 
-**Date:** 2026-10-22. **Repo:** https://github.com/mrAibo/WEG_HomeManager.
-**Canonical files:** `STATUS.md`, `ROADMAP.md`, `AGENTS.md`.
-**Current branch:** `feature/ai-first-foundation`.
-**Current PR:** [#1](https://github.com/mrAibo/WEG_HomeManager/pull/1) open/DRAFT/unmerged into `main`. Check exact head SHA at start: it can change.
+**Date:** 2026-10-22
+**Repo:** https://github.com/mrAibo/WEG_HomeManager
+**Canonical docs:** `AGENTS.md`, `STATUS.md`, `ROADMAP.md`
+**Primary architecture:** existing HaVeWa Next.js/TypeScript/PostgreSQL/Prisma reused; mobile-first Dashboard and future PWA.
+**Device/local path:** Aibo / `C:\Users\crown\Downloads\Projects\WEG_HomeManager`
 
-## Nonnegotiable user decisions
-- Product is **AI-first**: upload scans/photos, ask natural-language questions, AI proposes the work, locates providers, drafts documents; user can always manually revise.
-- UX must be **extremely user friendly** for people without IT or WEG expertise: guided Dashboard, German-first, accessible, no complex forms.
-- **WebGUI / responsive PWA** before any native app; leverage existing Next.js upstream stack.
-- **Ponytail Lazy Admin**: eliminate unnecessary admin work, reuse code before writing new, YAGNI, stdlib/native browser/installed dependencies before new abstractions.
-- Start with fictional/synthetic properties; do not publish real owner data or personal WEG documents.
-- Human authorization for email, orders, invoices/bank actions and legally binding decisions.
+## User decisions — do NOT ask again
+AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask in German, agent researches/organizes real evidence and suggests editable documents and actions. Human explicitly approves consequential sends, orders, bookkeeping and decisions. Reuse upstream/stdlib/native/browser/dependencies per Ponytail before writing code. No native rewrite, no unsanctioned MyHammer bots/scraping. Use synthetic fixtures; never commit real WEG data.
 
-## Verified state
-- User-created repository is public and independent, **not** an actual GitHub fork of HaVeWa.
-- Original main only had the initial README at `d389bddd86ef1566cf62d0c4595bb99d9b151e58` as last checked.
-- PR #1 includes an original in-memory Node prototype and project docs; prior GitHub CI test run passed 8 Node tests (https://github.com/mrAibo/WEG_HomeManager/actions/runs/39757712537).
-- This session added canonical project/status/UX/vendor/reuse documents and agent instructions to same draft PR branch (inspect changed files).
-- **Not done:** HaVeWa source import, real UI, operational AI, OCR, vendor search or integration, accounting/legal validation, deployment.
-- Existing development issues [#2](https://github.com/mrAibo/WEG_HomeManager/issues/2)–[#6](https://github.com/mrAibo/WEG_HomeManager/issues/6) cover upstream, case workflows, scans, vendors and accounting. Newly created [#7](https://github.com/mrAibo/WEG_HomeManager/issues/7) covers dashboard/a11y and [#8](https://github.com/mrAibo/WEG_HomeManager/issues/8) covers MyHammer manual handoff.
+## What was built and verified
+- PR #1 (Draft) contains product docs and stand-alone in-memory AI approval prototype; 8 Node tests passed.
+- On 22 Oct 2026 a separate local branch `integration/havewa-baseline` was created from `feature/ai-first-foundation`.
+- Exact upstream HaVeWa SHA `cb130792cfe40444c35827d059900f3b552a9af4` merged with unrelated-history merge, so source history preserved.
+- One conflict: README. WEG HomeManager README kept; upstream README stored at `docs/upstream/README-HaVeWa-original.md`; upstream `README.de.md` and AGPLv3 license remain.
+- GitHub Actions from upstream that would publish GHCR images, Pages or CasaOS releases were archived under `docs/upstream/disabled-workflows` to avoid an accidental release.
+- `vitest.config.ts` excludes `prototype/**` so Vitest does not try to run standalone Node tests.
+- Windows / Node v24.19.0 / npm 12.2.0: `npm ci` PASS (851 packages), `npx prisma generate` PASS, `npm test` PASS 199/199 with 1 skipped, `node --test prototype/ai-case/engine.test.mjs` PASS 8/8; `npm run build` PASS.
+- `npm run lint` fails on inherited baseline (90 errors, 21 warnings). Do not hide/disable blanket rules.
+- No running database, legal/accounting validation or real app clickthrough yet. Full test detail in `docs/weg-homemanager/BASELINE_VERIFICATION.md`.
 
-## How to continue (do not ask user to repeat decisions)
-1. `git fetch origin`; inspect `main`, `feature/ai-first-foundation`, PR #1 and newer commits. Do NOT assume old SHA is latest.
-2. Read `AGENTS.md`, `STATUS.md`, `ROADMAP.md`, `docs/weg-homemanager/UX_DASHBOARD.md`, `docs/weg-homemanager/CONTRACTOR_MARKETPLACES.md`, `docs/weg-homemanager/UPSTREAM_INTEGRATION.md`.
-3. Run `node --test prototype/ai-case/engine.test.mjs` and `node prototype/ai-case/demo.mjs`; record real output.
-4. Prioritize **Issue #2**: integrate `fgilde/hausverwaltung` source into an isolated branch; preserve license and history/provenance. Upstream is AGPLv3 (commercial alternative).
-5. Audit existing HaVeWa modules first: AI text adapter, MCP route (read+write!), tickets, document uploads, auth, dashboard and finance. Choose adaptation over duplication.
-6. After baseline works, prototype a single user-visible Dashboard journey **photo → maintenance case → AI editable inquiry → human approval**. Never auto-send during the first slice.
-7. Keep project status truthful; update files, PR, CI and issue links at handoff.
+## Required first actions
+1. `git status --short --branch` and `git fetch origin upstream`, inspect any commits newer than this handoff; never overwrite newer work.
+2. Inspect current PR #1 and a separate integration Draft PR (check GitHub; do not assume merged).
+3. Read canonical files and licenses. Record exact current HEAD in STATUS when moving branches.
+4. Evaluate security of existing HaVeWa `src/app/api/mcp/route.ts`, `src/lib/api-auth.ts`, server actions, tenant scope and uploads BEFORE enabling model write tools.
+5. Review inherited lint failures; fix only with scoped changes and tests. Check CI Linux npm 12 script blocking/Prisma generation.
+6. Setup synthetic Postgres and call the existing UI; identify what truly needs changing.
+7. First user-facing milestone: Dashboard `Was kann ich für Sie erledigen?`, `Foto aufnehmen`, `Dokument hochladen`, `Frage stellen`, `Jetzt wichtig`, `Zur Freigabe` and edit/approve work package.
+8. Do not overclaim OCR, payments or contractor discovery; first case workflow is still a pure prototype.
 
-## UX decisions and copy
-Top prompt: **"Was kann ich für Sie erledigen?"**.
-Main actions: **Foto aufnehmen**, **Dokument hochladen**, **Frage stellen**.
-Dashboard sections: **Jetzt wichtig**, **Zur Freigabe**, **In Bearbeitung**, **Finanzen**, **Termine**.
-Use reassuring, plain-language details: who handles it, what data is used, what the user can still change; show exactly when an outgoing action occurs.
+## Git hygiene
+- Never force push main, merge a Draft PR without review, or commit private docs/credentials.
+- Preserve AGPLv3 `LICENSE`, `LICENSING.md`, authorship and upstream sync link.
+- Local `node_modules` and Next build files should remain ignored.
+- New root `ROADMAP.md` is canonical; older nested roadmap points to it.
+- Work on reviewable short branches/PRs and update STATUS and HANDOFF with verified results.
 
-## MyHammer integration policy
-Verified official URL: https://www.my-hammer.de/auftraggeber-info/so-funktionierts
-Employer/customer posting free according to MyHammer, but contractor response not guaranteed. The platform matches leads and bids; it is not a real-time live auction.
-Published AGB Feb 2026: user may not publish third-party jobs, duplicate the same job, or scrape data; contractor qualifications and proposals must be checked.
-No approved public job-posting API was verified. Build a **manual assisted handoff** (editable ad, copy, official page open, owner posts, import user-provided quote), **not a bot**. Provider partnership/integration only with explicit approval.
-
-## Unresolved decisions
-- AGPLv3/open vs HaVeWa commercial proprietary license (do not assume proprietary use permitted).
-- Product naming, branding, whether public SaaS business is intended; these need not block synthetic MVP.
-- Real banking, email, local-service integrations and domain hosting — no external action without explicit permission.
-- The expired attachments from previous chats are not required for synthetic development.
-
-## Stop conditions
-If an agent cannot create the code integration in its tool environment, preserve the repo and write an exact blocker in STATUS.md; do not claim the upstream was imported.
-Do not merge Draft PR #1 until reviewed.
+## Integration specifics
+- Integration branch derives from `feature/ai-first-foundation` (which is not yet merged into main). Therefore merge order must be decided deliberately: review/merge PR #1 first or rebase/cherry-pick the integration on main **without force-pushing or losing work**.
+- The independent repository is not GitHub fork=true; don't claim otherwise.
+- Upstream automatic release workflows are intentionally disabled in this fork.
+- Potential licensing: AGPLv3 derivative, or separate commercial license from HaVeWa rights holder if proprietary.

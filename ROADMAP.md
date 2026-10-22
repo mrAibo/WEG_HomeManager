@@ -1,6 +1,6 @@
 # WEG HomeManager — canonical roadmap (AI-first / Lazy Admin)
 
-**Updated:** 2026-10-22. **Work in progress:** Draft PR #1; base HaVeWa source NOT yet integrated.
+**Updated:** 2026-10-22. **Work in progress:** HaVeWa E1 integration exists in separate review branch `integration/havewa-baseline`; source merged locally, 199 upstream + 8 prototype tests pass and Next.js build passes, but lint reports 90 errors / 21 warnings and DB/functional/security audits remain. See `STATUS.md` and `docs/weg-homemanager/BASELINE_VERIFICATION.md`.
 Single source of truth for priorities. See [STATUS](STATUS.md), [HANDOFF](HANDOFF.md), [UX](docs/weg-homemanager/UX_DASHBOARD.md), [marketplaces](docs/weg-homemanager/CONTRACTOR_MARKETPLACES.md).
 
 ## Success criterion
@@ -13,9 +13,10 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 - [ ] Merge PR #1 **only after review**. No claim of production readiness.
 
 ## E1 — HaVeWa upstream reuse (P0 / next; Issue #2)
-- [ ] Import preserved HaVeWa baseline (original AGPL license, attribution, exact upstream SHA and sync remote).
-- [ ] Reuse Next.js App Router / TS / PostgreSQL / Prisma / shadcn/ui / Tailwind, Auth.js, REST and MCP; avoid another frontend/backend stack.
-- [ ] Run upstream tests, production build, migrations, dependency/secret/security review, check tenant scopes and AI write tool safety.
+- [x] Import preserved HaVeWa baseline (original AGPL license, attribution, exact upstream SHA and sync remote) into separate integration branch.
+- [x] Reuse Next.js App Router / TS / PostgreSQL / Prisma / shadcn/ui / Tailwind, Auth.js, REST and MCP; avoid another frontend/backend stack.
+- [x] Run upstream tests (199 passed + 1 skipped), isolated Node case tests (8 passed), and Next.js production build (pass).
+- [ ] Resolve/triage inherited lint failures (90 errors, 21 warnings); database migrations, dependency/secret/security review, tenant scopes and AI write tool safety remain open.
 - [ ] Assess current dashboard, tickets, documents, banking and financial calculation implementation before modifying.
 - [ ] Prepare deterministic 6-unit synthetic dataset (also 12 and 50 unit variants).
 **Gate:** Repeatable builds; source provenance and a scoped feature gap map, no real user data.
