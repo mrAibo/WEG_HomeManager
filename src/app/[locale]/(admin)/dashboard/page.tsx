@@ -40,6 +40,7 @@ import { CrudDialog } from "@/components/crud-dialog";
 import { TextField } from "@/components/form-fields";
 import { createTask, toggleTask, deleteTask } from "@/server/actions/tasks";
 import { AiAssistant } from "@/components/ai-assistant";
+import { CaseIntake } from "@/components/case-intake";
 import { MonthlyBars, OccupancyDonut } from "@/components/dashboard-charts";
 import { ReminderButton } from "@/components/reminder-button";
 
@@ -139,6 +140,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <CaseIntake />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t("dashboard.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>

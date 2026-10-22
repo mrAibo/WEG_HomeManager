@@ -28,6 +28,14 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - Important: REST `/api/v1` and existing server actions have NOT been secured by this change. Do not issue broad bearer tokens to AI or enable model-controlled REST writes. Issue #11 remains P0 until token purpose, per-object authorization and durable approvals are implemented.
 - Check review PR and actual HEAD/CI before continuing. Keep both existing Draft PRs unmerged.
 
+## E2 Dashboard UI increment (2026-10-22)
+- Branch `feature/e2-safe-intake-ui` stacks onto `fix/e1-mcp-readonly` (Draft PR #12); source commit `e7522796db27f287d3cbe5f0146376455c23e65b`, Draft PR #13 https://github.com/mrAibo/WEG_HomeManager/pull/13. Linux CI run 39772511128 **success** at this source SHA; E1 security PR #12 Linux CI 39769989837 **success**. No merges into main/integration.
+- Existing `src/app/[locale]/(admin)/dashboard/page.tsx` now renders `CaseIntake` above legacy KPI widgets. It reuses Next.js, shadcn cards/buttons and browser file pickers. No second frontend or dependencies.
+- `src/lib/case-draft.ts`: deterministic local editable template for photo/document/question with six tests. This is **not an LLM**, OCR, uploaded/saved file, persisted Case, WEG approval or send. File input retains only metadata client-side. Manual checkbox review is not a durable authorization record; changing draft revokes it.
+- Synthetic onboarding: localhost test admin + one fake property created. Credentials held outside repo in sibling local-only JSON; never commit or disclose. 62 Prisma migrations were already present. No actual six-unit fixtures yet.
+- Actual Chrome/Playwright one-off smoke: authenticated Dashboard at `http://127.0.0.1:3000/de/dashboard`, draft generation, edit revokes review, copy after re-review, mobile 360px horizontal-overflow false — PASS. `scripts/e2-ui-smoke.mjs` is a credential-by-environment reproducible smoke test; automated rerun is not yet in CI.
+- Next: persistent Case/Proposal/Approval with transaction-scoped RBAC, durable audit and idempotency; safe document upload and AI evidence pipeline. Test no-write and denied permission. Do not confuse the local-only review checkbox with legal approval.
+
 ## Required first actions
 1. `git status --short --branch` and `git fetch origin upstream`, inspect any commits newer than this handoff; never overwrite newer work.
 2. Inspect current PR #1 and a separate integration Draft PR (check GitHub; do not assume merged).
