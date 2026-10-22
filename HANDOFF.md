@@ -78,6 +78,13 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - Source commit `5fdb0a399513b1ef9751b7d7b81feaad4654ba5a` in [Draft PR #18](https://github.com/mrAibo/WEG_HomeManager/pull/18), stacked on #17; [Linux Actions run 39817277134](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39817277134) started on source commit. Full Vitest 262 PASS / 1 SKIP, prototype 8 PASS, ESLint/TypeScript/Next build PASS. App restarted on loopback, `/de/login` 200. No migrations changed from 65.
 - Next: review linked Draft PR / CI, real file malware/structure security, retention/DSGVO, per-object access logging and REST bearer P0 #11. Before production: encrypted offsite backup/restore under controlled maintenance. No OCR/model or external writes yet.
 
+## E3 Evidence structural intake gate (2026-10-22)
+- Branch `feature/e3-evidence-structural-validation` stacked on Draft PR #18. Started clean at `36f93b5d5e6d258455566e9e29cfa3edbe54f471`. HaVeWa upstream unchanged.
+- Added `src/lib/ai-evidence-inspection.ts` structural pre-store check called by `src/server/ai-evidence-workflow.ts` before file persistence. Existing `pdf-lib` validates PDF page tree; prohibits active actions/embedded files/encrypted/unsupported PDFs. PNG chunk lengths/CRC and dimensions validated, unsupported ancillary text rejected. JPEG SOF/SOS marker and dimensions bounded; compressed image decoding and virus scan NOT performed.
+- No ClamAV on Aibo. Bad bytes are rejected without ever being stored, not "quarantined". Docs `docs/weg-homemanager/EVIDENCE_INGEST_SECURITY.md` define true quarantine/antivirus/sandbox requirements before real files. UI warns tests only.
+- Replaced pseudo-PDF fixtures in four synthetic DB/Chrome/restore scripts with actual pdf-lib-generated PDFs. 11 new Vitest tests, total 273 PASS / 1 SKIP, TypeScript, lint of changed files, production build PASS. DB security/snapshot smokes, coordinated full scratch restore, local Chrome saved Case and PDF Evidence flow PASS.
+- Source `c810ea637cd6146cdd778e6419ae5dbad89a3c9b` in [Draft PR #19](https://github.com/mrAibo/WEG_HomeManager/pull/19) (base #18), Linux [run 39826498550](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39826498550) queued at creation. No new migrations/dependencies/production data/external sends. Next: scoped scanner with isolated quarantine and allowlisted byte-signature attestation, robust parser under OS sandbox, REST Bearer P0 #11, GDPR retention and per-object auditing.
+
 ## Required first actions
 1. `git status --short --branch` and `git fetch origin upstream`, inspect any commits newer than this handoff; never overwrite newer work.
 2. Inspect current PR #1 and a separate integration Draft PR (check GitHub; do not assume merged).
