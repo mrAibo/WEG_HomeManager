@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { saveDashboardCaseAction } from "@/server/actions/ai-cases";
+import { uploadCaseEvidenceAction } from "@/server/actions/ai-evidence";
 import { Camera, FileText, MessageSquare, ClipboardCopy, ShieldCheck } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { prepareLocalCaseDraft, type CaseInputKind, type LocalCaseDraft } from "@/lib/case-draft";
@@ -18,6 +19,7 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
   const [kind, setKind] = useState<CaseInputKind>("question");
   const [description, setDescription] = useState("");
   const [selected, setSelected] = useState<{ name: string; size: number } | null>(null);
+  const selectedFile = useRef<File | null>(null);
   const [draft, setDraft] = useState<LocalCaseDraft | null>(null);
   const [reviewed, setReviewed] = useState(false);
   const [message, setMessage] = useState("");
@@ -35,6 +37,7 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
   function chooseFile(mode: "photo" | "document", file: File | undefined) {
     setKind(mode);
     setSelected(null);
+    selectedFile.current = null;
     invalidate();
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) {
@@ -42,7 +45,7 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
       return;
     }
     const allowed = mode === "photo"
-      ? file.type.startsWith("image/")
+      ? ["image/png", "image/jpeg"].includes(file.type)
       : ["application/pdf", "image/png", "image/jpeg"].includes(file.type);
     if (!allowed) {
       setMessage("Bitte ein Foto (JPG/PNG) oder ein PDF auswählen.");
@@ -50,6 +53,7 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
     }
     // Only metadata is retained in React state; content stays in the native picker.
     setSelected({ name: file.name, size: file.size });
+    selectedFile.current = file;
   }
 
   function prepare() {
@@ -77,7 +81,23 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
       });
       if (result.ok && result.caseId) {
         setSavedCaseId(result.caseId);
-        setMessage("Vorgang mit Textentwurf gespeichert. Dateien wurden nicht hochgeladen.");
+        const file = selectedFile.current;
+        if (file) {
+          const form = new FormData();
+          form.set("caseId", result.caseId);
+          form.set("file", file);
+          const uploaded = await uploadCaseEvidenceAction(form).catch(() => ({
+            ok: false, error: "Netzwerkfehler. Bitte Datei im gespeicherten Vorgang erneut auswählen.",
+          }));
+          selectedFile.current = null;
+          setSelected(null);
+          setMessage(uploaded.ok
+            ? "Vorgang mit Entwurf und Beweismittel gespeichert. Nichts wurde versendet."
+            : "Vorgang gespeichert, aber Datei nicht hochgeladen: " +
+              (uploaded.error ?? "Bitte Vorgang öffnen und Datei erneut auswählen."));
+        } else {
+          setMessage("Vorgang mit Textentwurf gespeichert. Keine Datei hochgeladen.");
+        }
       } else {
         setMessage(result.error ?? "Vorgang konnte nicht gespeichert werden.");
       }
@@ -128,7 +148,7 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
           <Button
             type="button" variant={kind === "question" ? "default" : "outline"}
             className="min-h-11" onClick={() => {
-              setKind("question"); setSelected(null); invalidate();
+              setKind("question"); setSelected(null); selectedFile.current = null; invalidate();
             }}
           >
             <MessageSquare className="size-4" /> Frage stellen
@@ -136,7 +156,7 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
         </div>
         <input
           ref={photoInput} type="file" className="sr-only"
-          accept="image/*" capture="environment"
+          accept="image/jpeg,image/png" capture="environment"
           aria-label="Foto für das Anliegen auswählen"
           onChange={(event) => chooseFile("photo", event.target.files?.[0])}
         />
@@ -149,7 +169,11 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
         {selected && (
           <p className="rounded-md bg-muted px-3 py-2 text-sm">
             Ausgewählt: {selected.name} ({Math.ceil(selected.size / 1024)} KB).
-            Die Datei wurde <strong>nicht hochgeladen oder ausgewertet</strong>.
+            {canSave ? (
+              <>Bei „Vorgang speichern“ wird sie als Beweismittel hochgeladen; keine OCR- oder KI-Auswertung.</>
+            ) : (
+              <>Die Datei wird für diese Rolle nicht hochgeladen.</>
+            )}
           </p>
         )}
         <div className="space-y-2">

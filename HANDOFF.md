@@ -54,6 +54,15 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - E3 action Vitest 7/7 PASS; full Vitest 235 PASS, 1 SKIP, prototype 8 PASS, production build and TypeScript PASS, changed-file ESLint PASS. No new migrations or dependencies. Next: safe file evidence & stored original hashes, object authorization, duplicate-case idempotency and UX without hard reload. Need complete E3 before any AI or side effects.
 - Credentials exist only outside Git in local synthetic test fixture; never commit them.
 
+## E3 Evidence uploads and protected download (2026-10-22)
+- Work branch `feature/e3-evidence-upload` stacked on `feature/e3-saved-case-ui` PR #15, started at clean `12541b059e26bc8fc27ec7bf50164271b73101f0`; source commit `5f8d8198fae42d10dd500631c42a6993660ef3a4`, [Draft PR #16](https://github.com/mrAibo/WEG_HomeManager/pull/16). Upstream unchanged, PR chain remains Draft.
+- New additive Prisma `AiEvidence` tenant+case FK, SHA-256 content digest, immutable API semantics, unique case+hash and storage key. Migration `20261022154639_weg_ai_case_evidence` applied on synthetic local PostgreSQL: **64 migrations**, no production DB touch.
+- Reuse `src/lib/storage.ts` HaVeWa file adapter (random local storage keys); validates file magic+tail for JPG/PNG/PDF max 10 MiB. Downloads through new Auth.js/session-guarded GET `/api/cases/[id]/evidence/[evidenceId]`, attachment-only, no-store, nosniff/sandbox, byte hash checked before serving.
+- Authenticated upload Server Action `src/server/actions/ai-evidence.ts` calls `addCaseEvidence` with session-derived tenant/actor only; rejects other tenant, non-manager and post-review. DB transaction locks proposal in DRAFT, stores Evidence + event together, attempts to remove newly saved file on DB error. Copy-only approval invariant remains.
+- Dashboard `CaseIntake` now saves selected file with explicitly saved Case, showing partial success if attachment fails. Detail page `/cases/[id]` shows evidence hashes/download and optional file upload only while DRAFT; no OCR/LLM.
+- Tests: 22 new Vitest (policy, auth action, protected download), full Vitest 257 PASS 1 SKIP, prototype 8 PASS, TypeScript, changed-file ESLint, Next production build PASS. `scripts/e3-evidence-db-smoke.ts` and `scripts/e3-evidence-ui-smoke.mjs` ran against synthetic localhost DB and Chrome: exact file bytes verified on download, unauthorized 401, post-review cannot upload, 360px mobile. Both clean their own records/file bytes. CI browser/db smoke not wired.
+- Next: review PR and CI first; strengthen validation/antivirus for untrusted uploads, retention/backups of storage, evidence-to-proposal hash binding, role/object matrix and REST bearer token restrictions #11. Then OCR/LLM with opt-in provider and DPIA. Keep releases disabled, Draft PRs unmerged, no real personal data.
+
 ## Required first actions
 1. `git status --short --branch` and `git fetch origin upstream`, inspect any commits newer than this handoff; never overwrite newer work.
 2. Inspect current PR #1 and a separate integration Draft PR (check GitHub; do not assume merged).
