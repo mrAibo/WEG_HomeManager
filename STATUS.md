@@ -2,12 +2,20 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E1 security follow-up: fail-closed model-facing MCP boundary, then E2 UI. Still synthetic-only.
+**Current focus:** E2 Dashboard input/draft UI review, based on security Draft PR #12. Synthetic-only; persistent Case/Approval still pending.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
 **Branch:** `integration/havewa-baseline` (based on `feature/ai-first-foundation`).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E2 synthetic UI increment (review branch `feature/e2-safe-intake-ui`)
+- Based on security review commit `48fd0307b6efbcc5cad617851a1dc3dfd1b221c6`; no upstream re-import or force pushes.
+- Dashboard primary German intake: question, native photo/document selection, deterministic local draft, editable subject/body, reviewed checkbox invalidated on edit, clipboard-only handoff. Uses existing HaVeWa UI. **No LLM, OCR, upload, Case persistence, saved approval or outgoing communication.** This is a usable E2 UI prototype, not the whole E2/E3 acceptance gate.
+- `npx vitest run src/lib/case-draft.test.ts`: **6/6 PASS**. Targeted ESLint and `npx tsc --noEmit`: PASS. `npm test`: **218 passed, 1 skipped**; prototype Node tests **8 passed**. `npm run build`: PASS, inherited middleware/Turbopack warnings remain.
+- Real localhost Chrome/Playwright synthetic flow: fresh account/tenant/property onboarding, credentials login, Dashboard draft, review revocation after manual edit, clipboard copy, 360px width with no horizontal overflow — **PASS**. Initial browser test failed on stale server build, fixed by restarting locally bound Next.js service and rerunning; no product bug in current build confirmed.
+- PostgreSQL 16 and 62 migrations remain; one synthetic property added (six actual units not yet seeded). Local test credentials stored outside repo; never committed. `scripts/e2-ui-smoke.mjs` is prepared for repeatable environment-supplied credentials but **not CI-executed**.
+- Still open: Issue #7 full UX and accessibility review, Issue #3 persisted Case+approval, Issue #4 OCR/upload, Issue #11 REST bearer writes, Issue #10 inherited lint. Real user usability testing not performed.
 
 ## 2026-10-22 security increment — review branch `fix/e1-mcp-readonly`
 - Base: `2c4052d13ffc6fcd5a97ab4825992cba48254cdc`, clean working tree after fetch before modifications. Both existing PR #1/#9 remain Draft and unmerged. GitHub baseline Actions run 39766051885 succeeded.

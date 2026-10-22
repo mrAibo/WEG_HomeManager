@@ -25,6 +25,8 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 **Gate:** Repeatable builds; source provenance and a scoped feature gap map, no real user data.
 
 ## E2 — User-first Dashboard and design system (P0; [Issue #7](https://github.com/mrAibo/WEG_HomeManager/issues/7); parallel UX specification before E1, implementation after E1)
+- [x] First guarded UI increment on top of MCP security: primary German intake on existing HaVeWa dashboard, native photo/document pickers, question, editable deterministic text draft, explicit review and copy-only manual handoff. No AI/OCR/upload/persistence or sends; this is NOT the complete vertical Case slice. Local desktop and 360px smoke passed on synthetic tenant.
+- [ ] Next milestone: persisted tenant-scoped Case/Evidence/Proposal and version-bound approval, secure content upload and real AI/OCR with human review; do not present the current local draft as a saved case.
 - [ ] Mobile-first responsive web UI; PWA installability if supported by native web/browser primitives without scope creep.
 - [ ] German interface, conversational input, three capture actions: photograph, upload/scan, ask/speak.
 - [ ] Role-aware **"Was ist heute wichtig?"**: urgent cases, AI drafts awaiting review, pending responses, deadlines, bills and reserve summary.
