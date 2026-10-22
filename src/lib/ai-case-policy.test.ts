@@ -20,13 +20,15 @@ describe("E3 immutable copy approval policy", () => {
     expect(digest).not.toBe(hashProposalContent("Inhalt", "Titel"));
   });
   it("accepts only the approved matching copy-only version", () => {
-    const proposal = { version: 4, title: "Titel", body: "Inhalt", state: "APPROVED" };
-    const approval = { version: 4, contentSha256: hashProposalContent("Titel", "Inhalt"), scope: "COPY_ONLY" };
+    const proposal = { version: 4, title: "Titel", body: "Inhalt", state: "APPROVED", evidenceSha256: "a".repeat(64) };
+    const approval = { version: 4, contentSha256: hashProposalContent("Titel", "Inhalt"), evidenceSha256: "a".repeat(64), scope: "COPY_ONLY" };
     expect(isCurrentCopyApproval(proposal, approval)).toBe(true);
     expect(isCurrentCopyApproval({ ...proposal, version: 5 }, approval)).toBe(false);
     expect(isCurrentCopyApproval({ ...proposal, body: "geändert" }, approval)).toBe(false);
     expect(isCurrentCopyApproval({ ...proposal, state: "DRAFT" }, approval)).toBe(false);
     expect(isCurrentCopyApproval(proposal, { ...approval, scope: "SEND_EMAIL" })).toBe(false);
+    expect(isCurrentCopyApproval(proposal, { ...approval, evidenceSha256: "b".repeat(64) })).toBe(false);
+    expect(isCurrentCopyApproval({ ...proposal, evidenceSha256: null }, approval)).toBe(false);
     expect(isCurrentCopyApproval(proposal, null)).toBe(false);
   });
 });

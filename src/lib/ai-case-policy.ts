@@ -17,11 +17,13 @@ export function hashProposalContent(title: string, body: string): string {
 }
 
 export function isCurrentCopyApproval(
-  proposal: { version: number; title: string; body: string; state: string },
-  approval: { version: number; contentSha256: string; scope: string } | null,
+  proposal: { version: number; title: string; body: string; state: string; evidenceSha256: string | null },
+  approval: { version: number; contentSha256: string; evidenceSha256: string | null; scope: string } | null,
 ): boolean {
   return proposal.state === "APPROVED" &&
     approval?.scope === "COPY_ONLY" &&
     approval.version === proposal.version &&
+    !!proposal.evidenceSha256 &&
+    approval.evidenceSha256 === proposal.evidenceSha256 &&
     approval.contentSha256 === hashProposalContent(proposal.title, proposal.body);
 }

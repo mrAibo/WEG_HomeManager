@@ -20,6 +20,7 @@ type Proposal = {
   body: string;
   state: "DRAFT" | "IN_REVIEW" | "APPROVED" | "REJECTED";
   origin: "TEMPLATE" | "MODEL";
+  evidenceSha256: string | null;
 };
 
 const labels: Record<Proposal["state"], string> = {
@@ -97,6 +98,11 @@ export function CaseReview({ proposal }: { proposal: Proposal }) {
         <p className="text-xs text-muted-foreground">
           Diese Freigabe ist ausschließlich für manuelles Kopieren gültig.
           Es werden keine Nachrichten verschickt, Aufträge erteilt oder Zahlungen ausgelöst.
+          {proposal.evidenceSha256 && (
+            <span className="mt-2 block break-all">
+              Geprüfter Anlagenstand (SHA-256): {proposal.evidenceSha256}
+            </span>
+          )}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

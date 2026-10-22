@@ -1299,6 +1299,7 @@ model AiProposal {
   title         String
   body          String           @db.Text
   contentSha256 String           @db.VarChar(64)
+  evidenceSha256 String?         @db.VarChar(64)
   state         AiProposalState  @default(DRAFT)
   approvals     AiApproval[]
   createdAt     DateTime         @default(now())
@@ -1315,6 +1316,7 @@ model AiApproval {
   proposal      AiProposal @relation(fields: [tenantId, proposalId], references: [tenantId, id], onDelete: Restrict)
   version       Int
   contentSha256 String     @db.VarChar(64)
+  evidenceSha256 String?  @db.VarChar(64)
   approvedById  String
   approvedRole  UserRole
   scope         String     @default("COPY_ONLY")

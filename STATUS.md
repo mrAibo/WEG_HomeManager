@@ -2,12 +2,21 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E3 Evidence attachments (text, JPEG, PNG, PDF) on saved Cases using reused HaVeWa local storage. Synthetic-only; no OCR/model/external sends.
+**Current focus:** E3 Evidence review-snapshot integrity: human COPY_ONLY approval binds both text version and immutable Evidence manifest, with byte verification. Synthetic-only.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `feature/e3-evidence-upload` (stacked on E3 saved Case PR #15, E3 core PR #14, E2 PR #13 and security PR #12).
+**Branch:** `feature/e3-evidence-snapshot` (stacked on Evidence PR #16, saved Case PR #15 and earlier draft chain).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E3 Evidence-bound proposal approvals (2026-10-22)
+- Started from clean `feature/e3-evidence-upload` HEAD `a5ad6096dd7c45d5521a1b95623e337cece4feea`. HaVeWa upstream `cb130792c` unchanged; PR #16 Linux CI run 39810675449 SUCCESS. No draft PR merged.
+- New fields `AiProposal.evidenceSha256` and `AiApproval.evidenceSha256` bind human-reviewed text to the exact uploaded Evidence manifest. Migration `20261022161638_weg_evidence_approval_snapshot` deployed **only** to loopback synthetic PostgreSQL, now **65 migrations**. Old approvals without snapshots intentionally fail closed until a new review cycle.
+- `src/server/ai-evidence-snapshot.ts`: SHA-256 of canonical list `[id,name,mime,size,sha256]`; verifies current disk bytes against each original digest and length; caps max 10 files per Case. Empty manifest is deliberately hashed as `[]`. On submit, proposal row is locked before reading Evidence to serialize against concurrent uploads. Approval and subsequent approved-copy reads verify current files and stored manifest, and block on discrepancy.
+- Refactored shared CaseWorkflowError to avoid cyclic dependency. Review UI shows Evidence manifest digest for submitted versions. Existing role/tenant, COPY_ONLY and refusal of outgoing actions maintained.
+- `scripts/e3-evidence-snapshot-db-smoke.ts`: **PASS**, synthetic-only test changes original PDF bytes before human approval (blocked), restores original (approval succeeds), tampers again after approval (copy blocked) and cleans only own test rows/blob. Previous `scripts/e3-evidence-db-smoke.ts` PASS. Existing Chrome scripts for saved Case approval and Dashboard/detail Evidence upload **PASS**, including 360px mobile.
+- `npm test`: **262 PASS, 1 SKIP** (five new snapshot policy tests), prototype Node 8 PASS, TypeScript, scoped ESLint, Next production build PASS with inherited warnings. No AI/OCR/AV scanning, new provider or external write permission.
+- **Remaining:** this tests restoration of one synthetic file, NOT backup/recovery of the full PostgreSQL database plus local storage. Need coordinated backup/restore drill, per-object access auditing, retention, malware scanning and stricter document structure validation before production. REST Bearer issue #11 remains P0.
 
 ## E3 Evidence attachment increment (2026-10-22)
 - Fetched `origin` and HaVeWa `upstream` with clean baseline HEAD `12541b059e26bc8fc27ec7bf50164271b73101f0`, upstream still unchanged. PR #15 and preceding Draft chain unmerged; CI for previous head `39792335209` SUCCESS.

@@ -26,7 +26,7 @@ export default async function SavedCasePage({
         orderBy: { createdAt: "desc" }, take: 1,
         select: {
           id: true, version: true, state: true, title: true, body: true,
-          origin: true,
+          evidenceSha256: true, origin: true,
         },
       },
       events: {
