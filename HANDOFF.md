@@ -55,7 +55,7 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - Credentials exist only outside Git in local synthetic test fixture; never commit them.
 
 ## E3 Evidence uploads and protected download (2026-10-22)
-- Work branch `feature/e3-evidence-upload` stacked on `feature/e3-saved-case-ui` PR #15, started at clean `12541b059e26bc8fc27ec7bf50164271b73101f0`; upstream unchanged, PR chain remains Draft.
+- Work branch `feature/e3-evidence-upload` stacked on `feature/e3-saved-case-ui` PR #15, started at clean `12541b059e26bc8fc27ec7bf50164271b73101f0`; source commit `5f8d8198fae42d10dd500631c42a6993660ef3a4`, [Draft PR #16](https://github.com/mrAibo/WEG_HomeManager/pull/16). Upstream unchanged, PR chain remains Draft.
 - New additive Prisma `AiEvidence` tenant+case FK, SHA-256 content digest, immutable API semantics, unique case+hash and storage key. Migration `20261022154639_weg_ai_case_evidence` applied on synthetic local PostgreSQL: **64 migrations**, no production DB touch.
 - Reuse `src/lib/storage.ts` HaVeWa file adapter (random local storage keys); validates file magic+tail for JPG/PNG/PDF max 10 MiB. Downloads through new Auth.js/session-guarded GET `/api/cases/[id]/evidence/[evidenceId]`, attachment-only, no-store, nosniff/sandbox, byte hash checked before serving.
 - Authenticated upload Server Action `src/server/actions/ai-evidence.ts` calls `addCaseEvidence` with session-derived tenant/actor only; rejects other tenant, non-manager and post-review. DB transaction locks proposal in DRAFT, stores Evidence + event together, attempts to remove newly saved file on DB error. Copy-only approval invariant remains.
