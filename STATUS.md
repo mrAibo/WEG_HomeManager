@@ -2,12 +2,20 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E3 conservative pre-storage PDF/JPEG/PNG structural inspection. Synthetic-only; no malware scanner, OCR, LLM or external actions.
+**Current focus:** E4 P0 containment of legacy REST Bearer writes: all /api/v1 mutations unconditionally denied; MCP read-only and Auth.js WebGUI preserved. No LLM writes or real data.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `feature/e3-evidence-structural-validation` (stacked on backup/restore PR #18 and previous Draft PRs).
+**Branch:** `security/e4-rest-bearer-readonly` (stacked on structural Evidence PR #19 and earlier Draft PRs).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E4 P0 REST Bearer write containment (2026-10-22)
+- Started at clean PR #19 HEAD `0dea5f70f8ddaa690cac75d19baae3097d56c24a`; upstream HaVeWa unchanged; previous PR CI SUCCESS; branch `security/e4-rest-bearer-readonly` stacked on #19. No merges.
+- `src/lib/rest-bearer-policy.ts` blocks **all non-GET/HEAD/OPTIONS** methods on `/api/v1/**` unconditionally with HTTP **403** / `REST_BEARER_READ_ONLY` / no-store. No opt-out. Seven concrete legacy write handlers call this gate before auth/parsing/domain calls (tickets, tasks, persons, records create/update/delete, privileged operations).
+- **Defense in depth:** `src/lib/api-auth.ts` rejects any future unknown `/api/v1` mutation **before** token DB lookup even if handler omitted route check. MCP JSON-RPC `POST /api/mcp` retains separate fail-closed `READ_ONLY_MCP_TOOLS`; Auth.js server actions remain unchanged.
+- **28 new tests:** `rest-bearer-policy.test.ts` (15), `rest-bearer-routes.test.ts` (8), `rest-bearer-auth.test.ts` (5). Full `npm test`: **301 PASS / 1 SKIP**; Node prototype **8 PASS**, TypeScript, changed-file ESLint, Next production build PASS with inherited warnings. Actual localhost HTTP REST writes `403` (POST/PATCH/DELETE/operations), anonymous GET `401`, MCP without token `401`, GUI login `200`. Synthetic Chrome Case create/edit/submit/approve/copy and mobile 360px PASS.
+- Source `8bf18bd6ce3eba66d3aee45441bc96fb262ce92f` published in [Draft PR #20](https://github.com/mrAibo/WEG_HomeManager/pull/20), based on #19. [GitHub Actions run 39828643373](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39828643373) **SUCCESS** for code commit. Documented breaking external-write compatibility in `docs/weg-homemanager/REST_BEARER_WRITE_LOCKDOWN.md`. **Issue #11 remains open**: read token scope, full API inventory, service principals, scoped execution approval, idempotency and field/object authorization are not finished. Do not put legacy Bearer credentials into agent harnesses.
+- No new schema, migration, dependency, real data or external execution. All PRs remain Draft.
 
 ## E3 pre-storage Evidence structural inspection (2026-10-22)
 - Started clean from `feature/e3-backup-restore-drill` HEAD `36f93b5d5e6d258455566e9e29cfa3edbe54f471`; #18 last Linux CI SUCCESS and no upstream HaVeWa changes. No merges.
