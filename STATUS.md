@@ -2,12 +2,23 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E3 transactional Case/Proposal/Approval persistence core in review branch; synthetic-only, no model or external writes.
+**Current focus:** E3 authenticated saved-Case Dashboard and copy-only review UI, synthetic-only. No model, OCR or outgoing actions.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `feature/e3-case-approval-core` (stacked on E2 PR #13, which is stacked on security PR #12).
+**Branch:** `feature/e3-saved-case-ui` (stacked on E3 core PR #14, E2 PR #13 and security PR #12).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E3 authenticated saved-Case UI increment (2026-10-22)
+- Started from clean latest E3 core HEAD `aa29a2a27feb39928161011fb08ce7edd9900204`, fetched origin/upstream; E3 core CI run 39779193743 SUCCESS; local PostgreSQL 63/63 migrations current.
+- Auth.js-backed `src/server/actions/ai-cases.ts`: human role `ADMIN` or `VERWALTER` checked by `requireRole` server-side; verified actor ID, role and effective tenant are never accepted from browser parameters. Input validation is strict; DB errors are not exposed to the client.
+- Existing HaVeWa Dashboard now explicitly persists **text-only** Case drafts through `saveDashboardCaseAction`. Selected photo or PDF is NOT uploaded and no OCR/AI performed; screen tells user. Saving is separate from local copy and never sends, hires, pays or creates an operational Ticket.
+- New `/cases` tenant-scoped list and `/cases/[id]` detail allow edit, version-increment, submit, exact-version human `COPY_ONLY` approval and read of server-verified approved text for clipboard. Audit history and original entered source hash visible. Routes protected by role and tenant.
+- `src/components/case-review.tsx` uses hard reload after successful mutations due to observed stale client router view; functional but needs UX optimization. Initial browser automation exposed stale interface after successful submit; confirmed fixed by a full navigation after commit.
+- New `src/server/actions/ai-cases.test.ts` **7 PASS**: forged actor and tenant ignored, nonmanager denial, exact version propagation, invalid version rejection, opaque internal errors, authenticated copy read, failed authentication.
+- Local real Chrome test: synthetic admin login → Dashboard draft → save in DB → reopen → edit version 2 → submit → human approve → server-approved copy, and mobile width 360 px. `E3_UI_PERSISTENT_CASE_REVIEW_COPY_PASS` / `E3_CASE_MOBILE_360_PASS`. Repeatable synthetic-only `scripts/e3-ui-smoke.mjs` requires `WEG_SMOKE_EMAIL` (`.invalid`) and `WEG_SMOKE_PASSWORD` plus loopback-only `DATABASE_URL`; cleans its own Cases. Not yet in GitHub CI.
+- `npm test`: 235 PASS / 1 SKIP; `node --test prototype/ai-case/engine.test.mjs`: 8 PASS; changed-file ESLint, `npx tsc --noEmit` and `npm run build`: PASS. Existing middleware/Turbopack warnings remain.
+- No new DB migration, dependency, second frontend, API/MCP write tools, persistent attachments, AI model calls or real WEG data. E3 still needs safe evidence storage/upload, finer per-object permissions, concurrency/idempotency for create and an improved no-reload UI. REST write token exposure remains Issue #11.
 
 ## E3 database-backed review core (2026-10-22)
 - Repository/PR/upstream freshness checked again: no newer upstream `main` commits after `cb130792c`; no local changes at start. Existing PR #1/#9/#12/#13 remain Draft/unmerged.

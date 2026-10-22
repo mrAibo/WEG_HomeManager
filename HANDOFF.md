@@ -45,6 +45,15 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - Full Case/Evidence and human approval UI is still unimplemented. Next engineering step: server action with `requireUser` and explicit allowed role, hook dashboard to DB (no file upload until safe evidence design), list/view/edit/submit/review/copy current version and re-run browser security tests. No model API tokens and never auto-send.
 - Existing synthetic administrator credentials are stored locally outside the repo. Never commit them or real WEG personal data.
 
+## E3 authenticated saved-Case UI increment (2026-10-22)
+- Work branch `feature/e3-saved-case-ui` stacked on E3 core Draft PR #14; no merges. Started from clean `aa29a2a27feb39928161011fb08ce7edd9900204`, fetched origin and upstream. 63 local migrations up to date.
+- Dashboard `CaseIntake` has explicit save button for ADMIN/VERWALTER: saves **text-only** proposal through session-bound `src/server/actions/ai-cases.ts`; photo and document selections are local metadata only, not uploaded. No LLM/OCR/automatic side effects.
+- New `/cases` list and `/cases/[id]` tenant-scoped server pages + `CaseReview` client: edit/propose for review/approve COPY_ONLY, with manual approval checkbox and server-verified copy. Underlying persisted E3 service already rejects stale version, disallowed roles and cross-tenant access. Action code never accepts actor from client.
+- Chrome/Playwright synthetic end-to-end saved workflow PASSED (create, reload, revise v2, submit, human approve, copy, mobile 360 px no overflow) on locally bound Next.js. Script `scripts/e3-ui-smoke.mjs` requires synthetic `WEG_SMOKE_EMAIL` ending `.invalid`, `WEG_SMOKE_PASSWORD` and loopback `DATABASE_URL`. Test cleans only its generated Case rows.
+- Initial UI smoke exposed stale App Router proposal state after `router.refresh()`; fixed with full browser reload after committed mutation. This is safe but produces visible navigation; refine later with robust cache invalidation.
+- E3 action Vitest 7/7 PASS; full Vitest 235 PASS, 1 SKIP, prototype 8 PASS, production build and TypeScript PASS, changed-file ESLint PASS. No new migrations or dependencies. Next: safe file evidence & stored original hashes, object authorization, duplicate-case idempotency and UX without hard reload. Need complete E3 before any AI or side effects.
+- Credentials exist only outside Git in local synthetic test fixture; never commit them.
+
 ## Required first actions
 1. `git status --short --branch` and `git fetch origin upstream`, inspect any commits newer than this handoff; never overwrite newer work.
 2. Inspect current PR #1 and a separate integration Draft PR (check GitHub; do not assume merged).
