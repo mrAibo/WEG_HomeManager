@@ -40,6 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Private PostgreSQL backups (must never be committed)
+*.dump
+*.pgdump
+*.backup
+
 # HaVeWa
 /storage/
 !.env.example

@@ -2,12 +2,21 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E3 Evidence review-snapshot integrity: human COPY_ONLY approval binds both text version and immutable Evidence manifest, with byte verification. Synthetic-only.
+**Current focus:** E3 coordinated PostgreSQL + Evidence file-store backup/restore safety drill on isolated synthetic data. OCR/LLM/external actions remain disabled.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `feature/e3-evidence-snapshot` (stacked on Evidence PR #16, saved Case PR #15 and earlier draft chain).
+**Branch:** `feature/e3-backup-restore-drill` (stacked on Evidence snapshot PR #17, Evidence PR #16 and earlier Draft chain).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E3 coordinated backup/recovery DRILL (2026-10-22)
+- Started from **clean** Evidence snapshot HEAD `896629a489cb828a8ee819447093ca431cea5060` on Aibo. PR #17 GitHub Linux CI 39813824764 **SUCCESS**, upstream HaVeWa unchanged, no merge to main.
+- New synthetic-only `scripts/e3-backup-restore-drill.ts`: strict localhost `DATABASE_URL`, Docker container/DB identity, single synthetic WEG tenant, all `.invalid` account emails, and local Next.js port 3000 stopped. This is not enabled for real customer data or production.
+- Uses native `docker exec havewa-db pg_dump -Fc`, full private `storage/documents` copy with SHA-256, then `createdb`/`pg_restore` to a unique **scratch database**, and filesystem restore to an OS **scratch folder**. Verifies recovered tenant/Case/Evidence/versioned human `COPY_ONLY` approval, restored Evidence manifest SHA-256 and **all** file byte hashes/counts. No original DB or file store overwritten; dump and scratch records removed on clean exit.
+- Executed on Aibo with local Next.js stopped: **E3_COORDINATED_RESTORE_PASS**. Independent post-test verification: `remainingSourceCases=0`, `remainingEvidence=0`, `remainingStorageFiles=0`, `remainingScratchDatabases=0`; no residual test files or databases.
+- New operator-facing `docs/weg-homemanager/BACKUP_RESTORE_RUNBOOK.md` documents **mandatory write quiescence of all replicas/workers** for paired DB/file backup, manifest validation, secure retention, staged restore, rollback, and gaps. `.gitignore` now excludes common database dump extensions. GitHub Actions `integration-baseline.yml` path filter includes scripts and this runbook so review CI runs for this docs+script PR. Real production backup, offsite encryption/PITR, live failover and controlled maintenance mode **remain unimplemented**. Do not infer zero-data-loss guarantees from this local drill.
+- `npx tsc --noEmit` and targeted ESLint for the new drill: PASS. Full `npm test`: 262 PASS / 1 SKIP, prototype Node 8 PASS, Next.js production build PASS. No new npm dependencies/migrations/REST/MCP write tools, no real private data, no automatic third-party actions.
+- Source commit `5fdb0a399513b1ef9751b7d7b81feaad4654ba5a` published in [Draft PR #18](https://github.com/mrAibo/WEG_HomeManager/pull/18), based on #17. [GitHub Actions run 39817277134](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39817277134) started for source commit; verify final result. Local Next.js restarted on `127.0.0.1:3000`, login HTTP 200, working tree clean after source push.
 
 ## E3 Evidence-bound proposal approvals (2026-10-22)
 - Started from clean `feature/e3-evidence-upload` HEAD `a5ad6096dd7c45d5521a1b95623e337cece4feea`. HaVeWa upstream `cb130792c` unchanged; PR #16 Linux CI run 39810675449 SUCCESS. No draft PR merged.
