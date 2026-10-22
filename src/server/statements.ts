@@ -1,0 +1,153 @@
+import "server-only";
+import { prisma } from "@/lib/prisma";
+import { buildStatement, monthsActiveInYear, type UnitInput, type CostInput } from "@/lib/allocation/statement";
+import { extrapolateConsumption } from "@/lib/allocation/heating-degree-days";
+import type { AllocationMethod } from "@/lib/allocation";
+
+/** Heiz-/Warmwasserverbrauch einer Einheit im Jahr aus den Zählerständen (Ablesedifferenz). */
+export function meterConsumption(meters: { readings: { value: unknown; date: Date }[] }[]): number {
+  return meters.reduce((sum, m) => {
+    if (m.readings.length < 2) return sum;
+    const vals = m.readings.map((r) => Number(r.value));
+    const measured = Math.max(...vals) - Math.min(...vals);
+    // HeizkostenV §9b: unterjährige Ableseperiode auf Jahreswert hochrechnen.
+    const dates = m.readings.map((r) => r.date).sort((a, b) => a.getTime() - b.getTime());
+    return sum + extrapolateConsumption(measured, dates[0], dates[dates.length - 1]);
+  }, 0);
+}
+
+export interface StatementUnit {
+  key: string; // eindeutig je Zeile (leaseId bzw. unitId bei Leerstand)
+  id: string; // Einheit
+  label: string;
+  leaseId: string | null;
+  renterEmails: string[];
+  renterNames: string[];
+  allocated: number;
+  prepayment: number;
+  balance: number; // >0 Guthaben, <0 Nachzahlung
+}
+
+export interface StatementResult {
+  property: { id: string; name: string; street: string; zip: string; city: string; tenantName: string } | null;
+  costs: { id: string; type: string; amount: number; method: string; umlagefaehig: boolean; note: string | null; subcommunityId: string | null }[];
+  units: StatementUnit[];
+  totalUmlage: number;
+}
+
+/**
+ * Lädt Einheiten, Verträge, Zählerstände und Kosten eines Objekts/Jahres und
+ * berechnet die Betriebskostenabrechnung (BetrKV + HeizkostenV). Geteilte Basis
+ * für Abrechnungs-Seite, Druckansicht und die Buchungs-/E-Mail-Aktionen.
+ */
+export async function computeStatement(
+  tenantId: string,
+  propertyId: string,
+  year: number,
+): Promise<StatementResult> {
+  const yStart = new Date(Date.UTC(year, 0, 1));
+  const yEnd = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+
+  const [property, dbUnits, costs] = await Promise.all([
+    prisma.property.findFirst({
+      where: { id: propertyId, tenantId },
+      include: { tenant: { select: { name: true, heatingConsumptionPct: true } } },
+    }),
+    prisma.unit.findMany({
+      where: { tenantId, building: { propertyId } },
+      include: {
+        // ALLE Mietverhältnisse im Jahr (Mieterwechsel!) — nicht nur das neueste.
+        leases: {
+          where: { startDate: { lte: yEnd }, OR: [{ endDate: null }, { endDate: { gte: yStart } }] },
+          include: { components: true, renters: { include: { person: true } } },
+          orderBy: { startDate: "asc" },
+        },
+        meters: {
+          where: { type: { in: ["WAERME", "WASSER_WARM"] } },
+          include: { readings: { where: { date: { gte: yStart, lte: yEnd } }, orderBy: { value: "asc" } } },
+        },
+      },
+    }),
+    prisma.costEntry.findMany({ where: { tenantId, propertyId, year }, orderBy: { type: "asc" } }),
+  ]);
+
+  const prepaymentMonthlyOf = (lease: (typeof dbUnits)[number]["leases"][number]) =>
+    lease.components
+      .filter((c) => c.type === "NEBENKOSTEN" || c.type === "HEIZKOSTEN")
+      .reduce((a, c) => a + Number(c.amount), 0);
+
+  const inputs: UnitInput[] = dbUnits.map((u) => {
+    const consumption = meterConsumption(u.meters);
+    return {
+      id: u.id,
+      label: u.label,
+      area: Number(u.area),
+      // Personenzahl als Umlage-Gewicht: repräsentativ das jüngste Mietverhältnis.
+      // ponytail: keine personen·monat-Gewichtung bei unterjährigem Wechsel.
+      persons: u.leases.at(-1)?.personCount ?? 1,
+      mea: u.mea ?? undefined,
+      consumption,
+      leases: u.leases.map((l) => {
+        const months = monthsActiveInYear(l.startDate, l.endDate, year);
+        return { id: l.id, monthsActive: months, prepayment: prepaymentMonthlyOf(l) * months };
+      }),
+    };
+  });
+
+  // HeizkostenV-Verbrauchsanteil: je Position, sonst Mandanten-Standard, sonst 70 %.
+  const tenantPct = property?.tenant.heatingConsumptionPct ?? null;
+  const costInputs: CostInput[] = costs.map((c) => {
+    const heating = c.type === "HEIZUNG" || c.type === "WARMWASSER";
+    const pct = c.consumptionSharePct ?? tenantPct;
+    return {
+      id: c.id,
+      amount: Number(c.amount),
+      method: c.method as AllocationMethod,
+      umlagefaehig: c.umlagefaehig,
+      heating,
+      consumptionShare: heating && pct != null ? pct / 100 : undefined,
+      // Untergemeinschaft (#42): nur deren Einheiten tragen die Position.
+      unitIds: c.subcommunityId ? dbUnits.filter((u) => u.subcommunityId === c.subcommunityId).map((u) => u.id) : undefined,
+    };
+  });
+
+  const { lines, totalUmlage } = buildStatement(inputs, costInputs);
+
+  // Nachschlage-Tabellen: Lease → Mieter, Einheit → Vertragsanzahl (für Label).
+  const leaseById = new Map(dbUnits.flatMap((u) => u.leases.map((l) => [l.id, l] as const)));
+  const leaseCountByUnit = new Map(dbUnits.map((u) => [u.id, u.leases.length] as const));
+  const unitLabelById = new Map(dbUnits.map((u) => [u.id, u.label] as const));
+
+  const units: StatementUnit[] = lines.map((line) => {
+    const lease = line.leaseId ? leaseById.get(line.leaseId) : undefined;
+    const renters = lease?.renters ?? [];
+    const names = renters.map((r) => `${r.person.firstName} ${r.person.lastName}`);
+    // Bei Mieterwechsel Einheit mit Mieter/Zeitraum kennzeichnen, sonst nur Label.
+    const multi = (leaseCountByUnit.get(line.unitId) ?? 0) > 1;
+    const baseLabel = unitLabelById.get(line.unitId) ?? line.label;
+    const label = multi && names.length ? `${baseLabel} · ${names.join(", ")}` : baseLabel;
+    return {
+      key: line.leaseId ?? line.unitId,
+      id: line.unitId,
+      label,
+      leaseId: line.leaseId,
+      renterEmails: renters.map((r) => r.person.email).filter((e): e is string => !!e),
+      renterNames: names,
+      allocated: line.allocated,
+      prepayment: line.prepayment,
+      balance: line.balance,
+    };
+  });
+
+  return {
+    property: property
+      ? { id: property.id, name: property.name, street: property.street, zip: property.zip, city: property.city, tenantName: property.tenant.name }
+      : null,
+    costs: costs.map((c) => ({
+      id: c.id, type: c.type, amount: Number(c.amount), method: c.method, umlagefaehig: c.umlagefaehig, note: c.note,
+      subcommunityId: c.subcommunityId,
+    })),
+    units,
+    totalUmlage,
+  };
+}

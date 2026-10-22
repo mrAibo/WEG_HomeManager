@@ -1,0 +1,151 @@
+"use client";
+
+import { useState, type ReactElement } from "react";
+import { useTranslations } from "next-intl";
+import { Plus, Paperclip } from "lucide-react";
+import { createEmail } from "@/server/actions/email";
+import { Button } from "@/components/ui/button";
+import { CrudDialog } from "@/components/crud-dialog";
+import { cn } from "@/lib/utils";
+import { RichTextEditor } from "@/components/rich-text-editor";
+import { textToHtml, quoteHtml } from "@/lib/mail-html";
+
+type Person = { id: string; label: string; email: string };
+type Doc = { id: string; name: string };
+type Tpl = { id: string; name: string; subject: string | null; body: string };
+
+const inputCls = cn(
+  "flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm shadow-xs",
+  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none dark:bg-input/30",
+);
+
+export function EmailCompose({
+  persons,
+  documents,
+  templates,
+  defaultTo,
+  defaultSubject,
+  quote,
+  triggerLabel,
+  trigger,
+  replyTo,
+}: {
+  persons: Person[];
+  documents: Doc[];
+  templates: Tpl[];
+  defaultTo?: string; // vorbelegter Empfänger, z. B. „Neue Nachricht" am Kontakt (#44)
+  defaultSubject?: string;
+  quote?: string; // Antwort: diese Nachricht wird als Zitat vorbelegt
+  triggerLabel?: string;
+  trigger?: ReactElement; // eigener Auslöser, z. B. Antworten-Icon im Posteingang (#43)
+  replyTo?: { kind: "in" | "out"; id: string }; // Vorgänger → gleiche Unterhaltung
+}) {
+  const t = useTranslations();
+  const [to, setTo] = useState(defaultTo ?? "");
+  const [subject, setSubject] = useState(defaultSubject ?? "");
+  // Editor-Inhalt; Vorlage wählen setzt ihn neu (key erzwingt Neuaufbau des Editors).
+  const [initialHtml, setInitialHtml] = useState(quote ? quoteHtml(quote) : "");
+  const [editorKey, setEditorKey] = useState(0);
+
+  function addPerson(email: string) {
+    if (!email) return;
+    setTo((cur) => {
+      const parts = cur.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+      if (parts.includes(email)) return cur;
+      return parts.length ? `${cur.replace(/[,;\s]*$/, "")}, ${email}` : email;
+    });
+  }
+  function applyTemplate(id: string) {
+    const tpl = templates.find((x) => x.id === id);
+    if (!tpl) return;
+    setSubject(tpl.subject ?? "");
+    setInitialHtml(textToHtml(tpl.body));
+    setEditorKey((k) => k + 1);
+  }
+
+  return (
+    <CrudDialog
+      trigger={
+        trigger ?? (
+          <Button size="sm">
+            <Plus className="size-4" />
+            {triggerLabel ?? t("email.compose")}
+          </Button>
+        )
+      }
+      title={triggerLabel ?? t("email.compose")}
+      action={createEmail}
+      submitLabel={t("email.send")}
+      extraActions={
+        <Button type="submit" variant="outline" name="intent" value="draft">
+          {t("email.saveDraft")}
+        </Button>
+      }
+    >
+      {replyTo && (
+        <>
+          <input type="hidden" name="replyKind" value={replyTo.kind} />
+          <input type="hidden" name="replyId" value={replyTo.id} />
+        </>
+      )}
+      {templates.length > 0 && (
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">{t("email.template")}</label>
+          <select defaultValue="" onChange={(e) => { applyTemplate(e.target.value); e.target.value = ""; }} className={cn(inputCls, "text-muted-foreground")}>
+            <option value="">{t("email.templateChoose")}…</option>
+            {templates.map((tpl) => (
+              <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        <label htmlFor="toAddress" className="text-sm font-medium">{t("email.to")}</label>
+        <input id="toAddress" name="toAddress" value={to} onChange={(e) => setTo(e.target.value)} placeholder={t("email.toPlaceholder")} required className={inputCls} />
+        {persons.length > 0 && (
+          <select aria-label={t("email.addPerson")} defaultValue="" onChange={(e) => { addPerson(e.target.value); e.target.value = ""; }} className={cn(inputCls, "text-muted-foreground")}>
+            <option value="">{t("email.addPerson")}…</option>
+            {persons.map((p) => (<option key={p.id} value={p.email}>{p.label} · {p.email}</option>))}
+          </select>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label htmlFor="cc" className="text-sm font-medium">Cc</label>
+          <input id="cc" name="cc" className={inputCls} />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="bcc" className="text-sm font-medium">Bcc</label>
+          <input id="bcc" name="bcc" className={inputCls} />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="subject" className="text-sm font-medium">{t("email.subject")}</label>
+        <input id="subject" name="subject" value={subject} onChange={(e) => setSubject(e.target.value)} required className={inputCls} />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="body" className="text-sm font-medium">{t("email.body")}</label>
+        <RichTextEditor key={editorKey} id="body" name="html" initialHtml={initialHtml} />
+      </div>
+
+      {documents.length > 0 && (
+        <div className="space-y-1.5">
+          <label className="flex items-center gap-1.5 text-sm font-medium">
+            <Paperclip className="size-4" /> {t("email.attachments")}
+          </label>
+          <div className="max-h-40 space-y-1 overflow-auto rounded-lg border p-2">
+            {documents.map((d) => (
+              <label key={d.id} className="flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted">
+                <input type="checkbox" name="documentIds" value={d.id} className="size-4" />
+                <span className="truncate">{d.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+    </CrudDialog>
+  );
+}

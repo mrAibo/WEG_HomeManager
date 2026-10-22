@@ -1,0 +1,149 @@
+import { createHash, createSign } from "node:crypto";
+
+// Enable Banking (Open Banking Aggregator). Auth = selbst signiertes JWT (RS256)
+// mit dem Application-Private-Key; kid = Application-ID. Doku:
+// https://enablebanking.com/docs/api/reference/
+// Reine Funktionen (buildJwt, mapTransaction) sind getestet; die HTTP-Calls
+// liegen dünn darüber und werden gegen die Sandbox verifiziert.
+
+const DEFAULT_BASE = "https://api.enablebanking.com";
+const b64url = (buf: Buffer | string) => Buffer.from(buf).toString("base64url");
+
+/** Signiertes API-JWT bauen (Gültigkeit 1 h, max. laut Doku 24 h). */
+export function buildJwt(applicationId: string, privateKeyPem: string, nowMs: number = Date.now()): string {
+  const iat = Math.floor(nowMs / 1000);
+  const header = { typ: "JWT", alg: "RS256", kid: applicationId };
+  const body = { iss: "enablebanking.com", aud: "api.enablebanking.com", iat, exp: iat + 3600 };
+  const input = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(body))}`;
+  const sig = createSign("RSA-SHA256").update(input).end().sign(privateKeyPem);
+  return `${input}.${b64url(sig)}`;
+}
+
+export type MappedTx = {
+  externalId: string | null;
+  legacyId: string | null; // alte Dedup-ID (nur Bank-Referenz), für vor #73 importierte Zahlungen
+  amount: number;
+  direction: "EINGANG" | "AUSGANG";
+  date: string | null; // YYYY-MM-DD
+  reference: string | null;
+  counterparty: string | null; // Zahler (Eingang) bzw. Empfänger (Ausgang), #60
+  counterpartyIban: string | null;
+};
+
+/** Enable-Banking-Transaktion → HaVeWa-Zahlungsfelder. */
+export function mapTransaction(t: Record<string, unknown>): MappedTx {
+  const ta = (t.transaction_amount ?? {}) as { amount?: string | number };
+  const amount = Number(ta.amount ?? 0);
+  const direction = t.credit_debit_indicator === "CRDT" ? "EINGANG" : "AUSGANG";
+  const date = (t.booking_date as string) || (t.value_date as string) || null;
+  const rem = t.remittance_information;
+  const reference = Array.isArray(rem) ? rem.join(" ").trim() : typeof rem === "string" ? rem : null;
+  const legacyId = (t.entry_reference as string) || (t.transaction_id as string) || null;
+  // Dedup-Schlüssel (#73): entry_reference wird von manchen Banken für jede Ausführung eines
+  // Dauerauftrags wiederverwendet → Bank-ID plus Datum/Betrag/Richtung/Verwendungszweck.
+  // Ohne Bank-ID trotzdem importierbar.
+  const externalId = date
+    ? "eb:" + createHash("sha256")
+        .update([t.transaction_id ?? "", t.entry_reference ?? "", date, amount.toFixed(2), direction, reference ?? ""].join("|"))
+        .digest("hex").slice(0, 32)
+    : null;
+  // Gegenseite: bei Eingang der Zahler (debtor), bei Ausgang der Empfänger (creditor)
+  const side = direction === "EINGANG" ? "debtor" : "creditor";
+  const party = t[side] as { name?: string } | undefined;
+  const acct = t[`${side}_account`] as { iban?: string } | undefined;
+  return {
+    externalId, legacyId, amount, direction, date, reference: reference || null,
+    counterparty: party?.name?.trim() || null,
+    counterpartyIban: acct?.iban?.replace(/\s/g, "") || null,
+  };
+}
+
+export type BankBalance = { amount: number; currency: string; date: string | null };
+
+// Bevorzugte Saldo-Arten (ISO 20022): gebuchter Tagesend-, gebuchter Zwischen-,
+// erwarteter, dann verfügbarer Saldo. Liefert die Bank keine davon: erster Eintrag.
+const BALANCE_ORDER = ["CLBD", "ITBD", "XPCD", "ITAV", "CLAV", "OPBD"];
+
+/** Aus der Saldenliste einer Bank den aktuellen Kontostand wählen (#57). */
+export function pickBalance(list: Record<string, unknown>[]): BankBalance | null {
+  const rank = (b: Record<string, unknown>) => {
+    const i = BALANCE_ORDER.indexOf(String(b.balance_type ?? ""));
+    return i < 0 ? BALANCE_ORDER.length : i;
+  };
+  const best = [...list].sort((a, b) => rank(a) - rank(b))[0];
+  const amt = best?.balance_amount as { amount?: string | number; currency?: string } | undefined;
+  if (!best || amt?.amount == null || Number.isNaN(Number(amt.amount))) return null;
+  const date = (best.reference_date as string) || ((best.last_change_date_time as string) ?? "").slice(0, 10) || null;
+  return { amount: Number(amt.amount), currency: amt.currency ?? "EUR", date };
+}
+
+// ---------- HTTP (gegen Sandbox zu verifizieren) ----------
+
+export type Connector = { applicationId: string; privateKeyPem: string; baseUrl?: string };
+
+async function api<T>(conn: Connector, method: string, path: string, body?: unknown): Promise<T> {
+  const base = conn.baseUrl || DEFAULT_BASE;
+  const res = await fetch(base + path, {
+    method,
+    headers: {
+      Authorization: `Bearer ${buildJwt(conn.applicationId, conn.privateKeyPem)}`,
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Enable Banking ${method} ${path}: ${res.status} ${text.slice(0, 300)}`);
+  }
+  return (await res.json()) as T;
+}
+
+export function listAspsps(conn: Connector, country?: string) {
+  return api<{ aspsps: { name: string; country: string }[] }>(
+    conn,
+    "GET",
+    "/aspsps" + (country ? `?country=${country}` : ""),
+  );
+}
+
+export function startAuth(
+  conn: Connector,
+  args: { aspspName: string; country: string; redirectUrl: string; state: string; psuType: string; validUntil: string },
+) {
+  return api<{ url: string; authorization_id: string }>(conn, "POST", "/auth", {
+    aspsp: { name: args.aspspName, country: args.country },
+    redirect_url: args.redirectUrl,
+    psu_type: args.psuType,
+    state: args.state,
+    access: { valid_until: args.validUntil },
+  });
+}
+
+export function createSession(conn: Connector, code: string) {
+  return api<{ session_id: string; accounts: { uid: string; account_id?: unknown; name?: string }[] }>(
+    conn,
+    "POST",
+    "/sessions",
+    { code },
+  );
+}
+
+export async function getTransactions(conn: Connector, accountUid: string, dateFrom?: string) {
+  const q = dateFrom ? `?date_from=${dateFrom}` : "";
+  const out: Record<string, unknown>[] = [];
+  let path = `/accounts/${encodeURIComponent(accountUid)}/transactions${q}`;
+  // Pagination via continuation_key.
+  for (let i = 0; i < 50; i++) {
+    const page = await api<{ transactions: Record<string, unknown>[]; continuation_key?: string }>(conn, "GET", path);
+    out.push(...(page.transactions ?? []));
+    if (!page.continuation_key) break;
+    path = `/accounts/${encodeURIComponent(accountUid)}/transactions${q ? q + "&" : "?"}continuation_key=${encodeURIComponent(page.continuation_key)}`;
+  }
+  return out;
+}
+
+/** Aktuelle Salden eines Kontos (#57). */
+export async function getBalances(conn: Connector, accountUid: string) {
+  const res = await api<{ balances?: Record<string, unknown>[] }>(conn, "GET", `/accounts/${encodeURIComponent(accountUid)}/balances`);
+  return res.balances ?? [];
+}
