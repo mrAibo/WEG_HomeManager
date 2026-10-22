@@ -29,7 +29,7 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - Check review PR and actual HEAD/CI before continuing. Keep both existing Draft PRs unmerged.
 
 ## E2 Dashboard UI increment (2026-10-22)
-- Branch `feature/e2-safe-intake-ui` stacks onto `fix/e1-mcp-readonly` (Draft PR #12). No merges into main/integration.
+- Branch `feature/e2-safe-intake-ui` stacks onto `fix/e1-mcp-readonly` (Draft PR #12); source commit `e7522796db27f287d3cbe5f0146376455c23e65b`, Draft PR #13 https://github.com/mrAibo/WEG_HomeManager/pull/13. Linux CI run 39772511128 **success** at this source SHA; E1 security PR #12 Linux CI 39769989837 **success**. No merges into main/integration.
 - Existing `src/app/[locale]/(admin)/dashboard/page.tsx` now renders `CaseIntake` above legacy KPI widgets. It reuses Next.js, shadcn cards/buttons and browser file pickers. No second frontend or dependencies.
 - `src/lib/case-draft.ts`: deterministic local editable template for photo/document/question with six tests. This is **not an LLM**, OCR, uploaded/saved file, persisted Case, WEG approval or send. File input retains only metadata client-side. Manual checkbox review is not a durable authorization record; changing draft revokes it.
 - Synthetic onboarding: localhost test admin + one fake property created. Credentials held outside repo in sibling local-only JSON; never commit or disclose. 62 Prisma migrations were already present. No actual six-unit fixtures yet.
