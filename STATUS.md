@@ -2,12 +2,20 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E1 — HaVeWa integration baseline with no real WEG data.
+**Current focus:** E1 security follow-up: fail-closed model-facing MCP boundary, then E2 UI. Still synthetic-only.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
 **Branch:** `integration/havewa-baseline` (based on `feature/ai-first-foundation`).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## 2026-10-22 security increment — review branch `fix/e1-mcp-readonly`
+- Base: `2c4052d13ffc6fcd5a97ab4825992cba48254cdc`, clean working tree after fetch before modifications. Both existing PR #1/#9 remain Draft and unmerged. GitHub baseline Actions run 39766051885 succeeded.
+- Model-facing MCP `tools/list` AND `tools/call` now use explicit read-only allowlist; unexpected and all mutating tool names denied. No broad write capability is available via MCP. Existing REST write endpoints / server actions **remain unchanged** and are not safe for AI credentials.
+- `npx vitest run src/app/api/mcp/route.test.ts`: **13/13 PASS**; targeted `npx eslint` on 3 changed files: **PASS**; `npx tsc --noEmit`: **PASS**.
+- `npm test`: **PASS** (199 upstream + 13 new tests, 1 skipped); `node --test prototype/ai-case/engine.test.mjs`: **8/8 PASS**; `npm run build`: **PASS**, previous middleware/Turbopack warnings remain.
+- Security issue #11 is only partially addressed: REST token scoping, tenant/object authorization audit, versioned persisted approvals, audit trail and idempotency are still open. No production claims.
+- No migrations, new dependencies or production data.
 
 ## Done and verified
 - [x] Remote Aibo came online and the repo was cloned into a dedicated Projects directory.

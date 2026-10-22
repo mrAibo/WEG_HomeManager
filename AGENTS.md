@@ -32,8 +32,8 @@ Do not automatically install the upstream Ponytail plugin/hook; these repository
 - Accessibility (WCAG 2.2 AA goal), mobile layout, keyboard use and legible typography are definition-of-done.
 
 ## Build and code reuse
-- **Not yet imported:** HaVeWa code is absent; current repository is NOT a GitHub fork.
-- Before feature work, fulfill G0: import HaVeWa while preserving AGPLv3 attribution, provenance and upstream sync.
+- **Imported in separate Draft PR #9:** HaVeWa is present in `integration/havewa-baseline`, with upstream history and AGPLv3 preserved; the repository is NOT a GitHub-native fork.
+- Before feature work, complete E1 integration review and security gates; do not re-import HaVeWa or merge Draft PRs without review.
 - Prefer HaVeWa's ticket/document/WEG modules and REST/MCP over replacement implementations.
 - Reference projects: open-condo-software/condo (MIT), vince844/kondomanager-free (AGPLv3), AtzeThon/WEG-Abrechnung (no explicit license detected — **DO NOT copy code**).
 - Preserve and audit upstream third-party licenses before adapting code.
