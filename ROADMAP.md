@@ -40,7 +40,8 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 ## E3 — Persistent AI Case and trusted approvals (P0; Issue #3)
 - [x] Initial **transactional COPY_ONLY core**: `AiCase`, versioned `AiProposal`, persistent `AiApproval` and `AiCaseEvent`, compound tenant FKs, SHA-256 and optimistic revision guard; no AI-authored actions and no outbound executor. 63rd migration applied to localhost synthetic DB and DB security-smoke passed.
 - [x] Authenticated Dashboard saving and `/cases` list/detail/review UI: human manager-only server actions, tenant-filtered data, versioned edit/submit/approve, approved COPY_ONLY text fetched from DB. Seven auth/security unit tests + actual Chrome/PostgreSQL full flow and mobile 360px pass. No binary evidence or actual AI yet.
-- [ ] Immutable file evidence hashes, document access/retention rules and human-linked source citations. Existing HaVeWa `Document`/`storage` should be reused.
+- [x] E3 first immutable Evidence layer: original bytes in existing HaVeWa `storage`, tenant/case composite FK + per-file SHA-256, restricted PDF/JPEG/PNG signatures, size cap, explicit user upload, guarded download and audit event. Synthetic DB + Chrome passed.
+- [ ] Finish Evidence hardening: malware/structural validation, backup/restore, retention/DSGVO, evidence citation in proposal, streaming/per-object access auditing; validate against malicious fixtures.
 - [ ] Durable scoped execution + idempotency only after authorization/security audit; no model-controlled REST writes or external side effects.
 - [ ] Case/Evidence/Proposal/Approval/Execution/Audit models with immutable source originals and versioning.
 - [ ] Enforce server-side per-tenant and per-object RBAC, provenance and prompt-injection separation.
@@ -49,7 +50,8 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 **Gate:** Test from a real saved case through human-approved draft, but no unsanctioned side effects.
 
 ## E4 — Photo, PDF, invoice and letter understanding (P1; Issue #4)
-- [ ] Reuse browser camera/file inputs and existing document handling; OCR/vision via pluggable provider rather than custom model.
+- [x] Browser camera/file picker now supports explicit JPEG/PNG/PDF evidence upload into saved Case through reused HaVeWa storage (no extraction yet).
+- [ ] OCR/vision via pluggable provider rather than custom model, with untrusted-file isolation and human review.
 - [ ] Source-linked extraction and field-level corrections; missing facts and confidence visible.
 - [ ] Safety-first escalation for emergencies. No invented diagnoses from an image.
 - [ ] Letters: dates, deadlines and editable response drafts.

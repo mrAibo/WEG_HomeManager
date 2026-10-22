@@ -2,12 +2,23 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E3 authenticated saved-Case Dashboard and copy-only review UI, synthetic-only. No model, OCR or outgoing actions.
+**Current focus:** E3 Evidence attachments (text, JPEG, PNG, PDF) on saved Cases using reused HaVeWa local storage. Synthetic-only; no OCR/model/external sends.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `feature/e3-saved-case-ui` (stacked on E3 core PR #14, E2 PR #13 and security PR #12).
+**Branch:** `feature/e3-evidence-upload` (stacked on E3 saved Case PR #15, E3 core PR #14, E2 PR #13 and security PR #12).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E3 Evidence attachment increment (2026-10-22)
+- Fetched `origin` and HaVeWa `upstream` with clean baseline HEAD `12541b059e26bc8fc27ec7bf50164271b73101f0`, upstream still unchanged. PR #15 and preceding Draft chain unmerged; CI for previous head `39792335209` SUCCESS.
+- Reused `src/lib/storage.ts` HaVeWa `saveFile/readFile/deleteFile`, no new storage adapter or runtime dependency. Introduced Prisma `AiEvidence` with tenant/case composite foreign key, immutable bytes SHA-256, trusted MIME, size, storage key, actor and timestamp; unique SHA256 per tenant+case and atomic `evidence_added` event. New migration `20261022154639_weg_ai_case_evidence` applied only to synthetic local DB; **64/64 migrations** current.
+- `src/lib/ai-evidence-policy.ts`: 10 MiB max, PDF/JPEG/PNG signature and basic trailer checks; this is **not** a full structural validator or malware scanner. Safe display names and SHA-256. File bytes written under random keys to existing local storage. On DB rejection, cleanup attempted to prevent orphan files.
+- `src/server/actions/ai-evidence.ts`: authenticated human ADMIN/VERWALTER session only, no actor/tenant client spoofing. `src/server/ai-evidence-workflow.ts`: verifies tenant and Case exists before filesystem write, refuses after non-DRAFT state, proposal conditional update serializes with concurrent submission, deduplicates and audits. No AI-facing write tools.
+- `/api/cases/[id]/evidence/[evidenceId]`: download protected by session role + tenant+case+evidence query, checksum reverified, attachment-only disposition, sandbox, nosniff and private no-store. Unauthorized gets 401, portal role 403, cross-tenant 404.
+- Dashboard now uploads selected JPG/PNG/PDF only on explicit `Vorgang speichern` action, with clear partial-save error feedback; saved Case detail also permits adding evidence while proposal is DRAFT. Evidence list and hash displayed. No OCR/extraction/LLM or independent legal authorization.
+- **Validation on Aibo:** `npm test` 257 PASS / 1 SKIP (22 new unit tests), prototype `node --test` 8 PASS, `npx tsc --noEmit`, targeted ESLint and `npm run build` PASS, inherited Turbopack/middleware warnings remain.
+- **Real synthetic DB + Chrome:** `scripts/e3-evidence-db-smoke.ts` PASSED tenant isolation, role denial, MIME, exact SHA/storage, duplicate, transactional event, lock after review; cleans test records and blob. `scripts/e3-evidence-ui-smoke.mjs` PASSED Dashboard file save, details additional upload, authorized byte-identical download, unauthenticated denial, submit-lock and mobile 360 px; cleans its own rows/blobs.
+- Not production ready: full file structure/malware scanning, backup and restore of local file storage, retention/DSGVO, large-file streaming, file access audit and sophisticated per-object scopes not yet reviewed. REST bearer write issue #11 and inherited lint debt #10 remain. No external sharing or auto actions.
 
 ## E3 authenticated saved-Case UI increment (2026-10-22)
 - Started from clean latest E3 core HEAD `aa29a2a27feb39928161011fb08ce7edd9900204`, fetched origin/upstream; E3 core CI run 39779193743 SUCCESS; local PostgreSQL 63/63 migrations current.

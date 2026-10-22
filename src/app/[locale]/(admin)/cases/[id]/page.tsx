@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { requireRole } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { CaseReview } from "@/components/case-review";
+import { CaseEvidenceUpload } from "@/components/case-evidence-upload";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function SavedCasePage({
@@ -17,6 +18,10 @@ export default async function SavedCasePage({
       id: true, summary: true, sourceText: true, sourceSha256: true, kind: true,
       createdAt: true,
       property: { select: { name: true } },
+      evidence: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, name: true, mime: true, sha256: true, size: true, createdAt: true },
+      },
       proposals: {
         orderBy: { createdAt: "desc" }, take: 1,
         select: {
@@ -54,8 +59,37 @@ export default async function SavedCasePage({
             SHA-256: {item.sourceSha256}
           </p>
           <p className="text-xs text-muted-foreground">
-            Hier wurde nur der eingegebene Text gespeichert. Foto, Scan oder PDF wurden nicht übertragen.
+            Ursprüngliche Textbeschreibung. Hochgeladene Dateien stehen separat unter „Beweismittel“.
           </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><h2 className="text-base font-semibold">Beweismittel ({item.evidence.length})</h2></CardHeader>
+        <CardContent className="space-y-4">
+          {item.evidence.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Noch keine Foto- oder PDF-Dateien hochgeladen.</p>
+          ) : (
+            <ul className="space-y-3">
+              {item.evidence.map((evidence) => (
+                <li key={evidence.id} className="min-w-0 rounded-md border p-3 text-sm">
+                  <a className="font-medium underline underline-offset-2 break-all"
+                    href={`/api/cases/${item.id}/evidence/${evidence.id}`}>
+                    {evidence.name} (herunterladen)
+                  </a>
+                  <p className="text-xs text-muted-foreground">{evidence.mime} · {Math.ceil(evidence.size / 1024)} KB · {evidence.createdAt.toLocaleString("de-DE")}</p>
+                  <p className="break-all text-xs text-muted-foreground">SHA-256: {evidence.sha256}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {proposal?.state === "DRAFT" ? (
+            <CaseEvidenceUpload caseId={item.id} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Nach Einreichung können keine zusätzlichen Beweismittel angehängt werden.
+              Bei neuen Erkenntnissen zuerst einen neuen Vorgang anlegen.
+            </p>
+          )}
         </CardContent>
       </Card>
       {proposal && (

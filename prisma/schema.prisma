@@ -1280,6 +1280,7 @@ model AiCase {
   sourceText   String        @db.Text
   sourceSha256 String        @db.VarChar(64)
   proposals    AiProposal[]
+  evidence     AiEvidence[]
   events       AiCaseEvent[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -1333,5 +1334,25 @@ model AiCaseEvent {
   version   Int?
   createdAt DateTime @default(now())
 
+  @@index([tenantId, caseId, createdAt])
+}
+
+
+// Evidence is immutable from the application API. Storage bytes are held by the
+// existing HaVeWa local storage adapter, never rendered inline under app origin.
+model AiEvidence {
+  id           String   @id @default(cuid())
+  tenantId     String
+  caseId       String
+  aiCase       AiCase   @relation(fields: [tenantId, caseId], references: [tenantId, id], onDelete: Restrict)
+  name         String
+  mime         String
+  size         Int
+  sha256       String   @db.VarChar(64)
+  storageKey   String   @unique
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  @@unique([tenantId, caseId, sha256])
   @@index([tenantId, caseId, createdAt])
 }
