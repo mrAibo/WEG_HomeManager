@@ -27,12 +27,24 @@ The AI prepares. Authorized humans review, correct and approve. Only then may an
 - **Integrations:** HaVeWa modules/API/MCP, with least-privilege tokens.
 - **Privacy:** strong tenant/unit isolation, local AI option, PII-minimized external model access.
 
+## Current status and agent handoff
+
+- **[STATUS.md](STATUS.md)** — verified completed work, live branch/PR/CI state and blockers (start here).
+- **[ROADMAP.md](ROADMAP.md)** — canonical gate-by-gate roadmap, including Dashboard/PWA and MyHammer.
+- **[HANDOFF.md](HANDOFF.md)** — next-agent procedure with sources, risks and exact follow-up.
+- **[AGENTS.md](AGENTS.md)** — Ponytail/Lazy Admin engineering rules, security and UX requirements.
+- [Dashboard usability design](docs/weg-homemanager/UX_DASHBOARD.md)
+- [MyHammer & Handwerker marketplaces](docs/weg-homemanager/CONTRACTOR_MARKETPLACES.md)
+- [Reuse-first policy](docs/weg-homemanager/REUSE_POLICY.md)
+
+**UX:** responsive novice-friendly WebGUI in the intended HaVeWa Next.js architecture; PWA as a progressive improvement. No separate desktop/native stack for the first release.
+
 ## Current deliverables
 
 - [Product vision](docs/weg-homemanager/PRODUCT_VISION.md)
 - [AI-first architecture and contracts](docs/weg-homemanager/AI_FIRST_ARCHITECTURE.md)
 - [Security and approval policy](docs/weg-homemanager/SECURITY_AND_APPROVALS.md)
-- [Roadmap and acceptance criteria](docs/weg-homemanager/ROADMAP.md)
+- [Roadmap and acceptance criteria](ROADMAP.md)
 - [Upstream integration notes](docs/weg-homemanager/UPSTREAM_INTEGRATION.md)
 - [Standalone case-state prototype](prototype/ai-case/README.md)
 
