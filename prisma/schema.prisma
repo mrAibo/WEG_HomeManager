@@ -182,6 +182,7 @@ model Tenant {
   isDemo Boolean @default(false)
 
   bankConnector BankConnector?
+  aiCases AiCase[]
 }
 
 model User {
@@ -266,6 +267,7 @@ model Property {
   resolutions   Resolution[]
   documents     Document[]
   tickets       Ticket[]
+  aiCases       AiCase[]
   maintenance   MaintenanceContract[]
   appointments  Appointment[]
   insurances    Insurance[]
@@ -1244,4 +1246,92 @@ model PropertyTax {
   createdAt      DateTime @default(now())
 
   @@index([tenantId])
+}
+
+// WEG HomeManager E3: independent intake workflow; never duplicates operational
+// HaVeWa Tickets. A reviewed proposal is COPY-ONLY, not authorization to send.
+enum AiCaseKind {
+  PHOTO
+  DOCUMENT
+  QUESTION
+}
+
+enum AiProposalState {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum AiProposalOrigin {
+  TEMPLATE
+  MODEL
+}
+
+model AiCase {
+  id           String        @id @default(cuid())
+  tenantId     String
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  propertyId   String?
+  property     Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  createdById  String
+  kind         AiCaseKind
+  summary      String
+  sourceText   String        @db.Text
+  sourceSha256 String        @db.VarChar(64)
+  proposals    AiProposal[]
+  events       AiCaseEvent[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([tenantId, id])
+  @@index([tenantId, createdAt])
+}
+
+model AiProposal {
+  id            String           @id @default(cuid())
+  tenantId      String
+  caseId        String
+  aiCase        AiCase           @relation(fields: [tenantId, caseId], references: [tenantId, id], onDelete: Restrict)
+  origin        AiProposalOrigin @default(TEMPLATE)
+  version       Int              @default(1)
+  title         String
+  body          String           @db.Text
+  contentSha256 String           @db.VarChar(64)
+  state         AiProposalState  @default(DRAFT)
+  approvals     AiApproval[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([tenantId, id])
+  @@index([tenantId, caseId])
+}
+
+model AiApproval {
+  id            String     @id @default(cuid())
+  tenantId      String
+  proposalId    String
+  proposal      AiProposal @relation(fields: [tenantId, proposalId], references: [tenantId, id], onDelete: Restrict)
+  version       Int
+  contentSha256 String     @db.VarChar(64)
+  approvedById  String
+  approvedRole  UserRole
+  scope         String     @default("COPY_ONLY")
+  createdAt     DateTime   @default(now())
+
+  @@unique([proposalId, version])
+  @@index([tenantId, createdAt])
+}
+
+model AiCaseEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  caseId    String
+  aiCase    AiCase   @relation(fields: [tenantId, caseId], references: [tenantId, id], onDelete: Restrict)
+  actorId   String
+  action    String
+  version   Int?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, caseId, createdAt])
 }

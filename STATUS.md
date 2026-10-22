@@ -2,12 +2,22 @@
 
 **Verified on:** 2026-10-22, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E2 Dashboard input/draft UI review, based on security Draft PR #12. Synthetic-only; persistent Case/Approval still pending.
+**Current focus:** E3 transactional Case/Proposal/Approval persistence core in review branch; synthetic-only, no model or external writes.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `integration/havewa-baseline` (based on `feature/ai-first-foundation`).
+**Branch:** `feature/e3-case-approval-core` (stacked on E2 PR #13, which is stacked on security PR #12).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E3 database-backed review core (2026-10-22)
+- Repository/PR/upstream freshness checked again: no newer upstream `main` commits after `cb130792c`; no local changes at start. Existing PR #1/#9/#12/#13 remain Draft/unmerged.
+- Audited HaVeWa `Ticket`, `Document`, local `storage`, `src/lib/rbac.ts`, and `audit.ts`. Reuse them in later integrations. Existing best-effort audit silently discards errors and is **not** suitable as the only approval audit.
+- E3 minimal database models: `AiCase`, `AiProposal`, `AiApproval`, `AiCaseEvent`, with tenant-scoped composite foreign keys, text-source SHA-256, content SHA-256, optimistic version checks, immutable historical approval rows and mandatory event inserts in the same transaction.
+- Explicit `COPY_ONLY` approval by human `ADMIN`/`VERWALTER`, never a permission to send, hire, book, transfer money or change WEG data. All new cases originate from verified human actors and predefined templates; **no AI, OCR, uploads, web publishing or external execution** implemented.
+- Migration `20261022122326_weg_ai_case_approval`: local Postgres `havewa` **PASS**, 63/63 deployed; `npx prisma migrate status`: up to date. No production DB touched.
+- `scripts/e3-db-smoke.ts`: **PASS** in synthetic localhost DB (tenant/property scope, denied finance role, stale version, replay, old-approval revocation, version 1→2, audit rows and cleanup). `npx prisma validate`, `npx prisma generate`, `npx tsc --noEmit`, targeted ESLint **PASS**.
+- `npm test`: 228 PASS, 1 SKIP (including 10 new policy tests); prototype `node --test ...`: 8 PASS; `npm run build`: PASS with inherited middleware/Turbopack warnings.
+- E3 incomplete: no authenticated server action/UI wired to this persistence service, no PDF/PHOTO evidence rows or secure ingestion, no generic approval executor or idempotent external side effects, no complete object-level RBAC/REST token purpose. Do not represent this as a production approval system.
 
 ## E2 synthetic UI increment (review branch `feature/e2-safe-intake-ui`)
 - Based on security review commit `48fd0307b6efbcc5cad617851a1dc3dfd1b221c6`; no upstream re-import or force pushes.

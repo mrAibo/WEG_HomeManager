@@ -37,6 +37,10 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 **Gate:** In usability tests, a novice can create/review one case with minimal help. Record observed times rather than promises.
 
 ## E3 — Persistent AI Case and trusted approvals (P0; Issue #3)
+- [x] Initial **transactional COPY_ONLY core**: `AiCase`, versioned `AiProposal`, persistent `AiApproval` and `AiCaseEvent`, compound tenant FKs, SHA-256 and optimistic revision guard; no AI-authored actions and no outbound executor. 63rd migration applied to localhost synthetic DB and DB security-smoke passed.
+- [ ] Link authenticated Dashboard server actions and review UI to this core; no identity/role may arrive from client parameters.
+- [ ] Immutable file evidence hashes, document access/retention rules and human-linked source citations. Existing HaVeWa `Document`/`storage` should be reused.
+- [ ] Durable scoped execution + idempotency only after authorization/security audit; no model-controlled REST writes or external side effects.
 - [ ] Case/Evidence/Proposal/Approval/Execution/Audit models with immutable source originals and versioning.
 - [ ] Enforce server-side per-tenant and per-object RBAC, provenance and prompt-injection separation.
 - [ ] Human edits revoke approvals; durable approval trail, idempotent execution, no AI external writes by default.

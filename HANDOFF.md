@@ -36,6 +36,15 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - Actual Chrome/Playwright one-off smoke: authenticated Dashboard at `http://127.0.0.1:3000/de/dashboard`, draft generation, edit revokes review, copy after re-review, mobile 360px horizontal-overflow false — PASS. `scripts/e2-ui-smoke.mjs` is a credential-by-environment reproducible smoke test; automated rerun is not yet in CI.
 - Next: persistent Case/Proposal/Approval with transaction-scoped RBAC, durable audit and idempotency; safe document upload and AI evidence pipeline. Test no-write and denied permission. Do not confuse the local-only review checkbox with legal approval.
 
+## E3 transactional review-core increment (2026-10-22)
+- Work branch: `feature/e3-case-approval-core` based on E2 Draft PR #13 (`19dd2e187159f83e2fcdef0f90f8110c1d1d9864`). Do not merge any stacked draft automatically.
+- HaVeWa reusable modules confirmed: `Ticket`, `Document`, `src/lib/storage.ts`, `src/server/actions/maintenance.ts`; `src/lib/audit.ts` is best-effort and must NOT back binding approval evidence.
+- Added Prisma models `AiCase`, `AiProposal`, `AiApproval`, `AiCaseEvent` and migration `20261022122326_weg_ai_case_approval`. Postgres synthetic-only `npx prisma migrate deploy` + `migrate status`: 63 migrations PASS. Only new additive migration, no old tables changed. Upstream has no new commits beyond imported `cb130792c`.
+- Server-only-by-location workflow `src/server/ai-case-workflow.ts`: manager-only case creation, SHA-256 hashes, explicit `COPY_ONLY` review, optimistic exact-version updates, stale/replay rejection, atomic case event logging. The service has **no API/MCP endpoint**, external executor, upload or AI integration. Human identity MUST be obtained from authenticated session when wiring server actions, not from a client-supplied actor.
+- New policy helpers and 10 unit tests `src/lib/ai-case-policy*` + `scripts/e3-db-smoke.ts`. Real local synthetic DB smoke validates tenant/property denial, role denial, version mutation, approval invalidation/replay and atomic event history; cleans its own inserted records. TypeScript, changed-file ESLint, 228 Vitest, 8 Node prototype and Next production build passed. Documented existing build warnings persist.
+- Full Case/Evidence and human approval UI is still unimplemented. Next engineering step: server action with `requireUser` and explicit allowed role, hook dashboard to DB (no file upload until safe evidence design), list/view/edit/submit/review/copy current version and re-run browser security tests. No model API tokens and never auto-send.
+- Existing synthetic administrator credentials are stored locally outside the repo. Never commit them or real WEG personal data.
+
 ## Required first actions
 1. `git status --short --branch` and `git fetch origin upstream`, inspect any commits newer than this handoff; never overwrite newer work.
 2. Inspect current PR #1 and a separate integration Draft PR (check GitHub; do not assume merged).
