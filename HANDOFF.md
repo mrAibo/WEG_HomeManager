@@ -21,6 +21,13 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - Docker Desktop/PostgreSQL 16 now running with container `havewa-db`, bound ONLY to `127.0.0.1:5432`; all 62 migrations applied successfully. Secure random local-only `AUTH_SECRET` stored in ignored `.env` (not in Git). Next.js server started on `http://127.0.0.1:3000` (Windows shell PID `72132` at execution); GET `/` and `/setup` returned HTTP 200 with expected `/de/setup` flow. No admin account created and no UI clickthrough; use browser locally on Aibo to finish synthetic setup.
 - GitHub Actions integration baseline ran successfully: https://github.com/mrAibo/WEG_HomeManager/actions/runs/39765475490 at commit `e44763ace62fefd992f5267f48f321353847bc06`. Full tests documented in `docs/weg-homemanager/BASELINE_VERIFICATION.md`.
 
+## Security increment on 2026-10-22 (review branch `fix/e1-mcp-readonly`)
+- Inspected HaVeWa MCP: original `create_task`, `create_ticket`, `create_person`, generic CRUD and `run_operation` were exposed to any permitted Bearer principal. Bearer login does not establish human approval.
+- Added `src/lib/mcp-tool-policy.ts` as explicit fail-closed allowlist. MCP `tools/list` filters and `tools/call` independently denies every name not explicitly read-only.
+- Added 13 tests in `src/app/api/mcp/route.test.ts` (direct write invocation, unknown future tool, auth, safe read). All passed. Targeted ESLint and `tsc --noEmit` passed; full `npm test` (212 passed + 1 skipped), prototype (8 passed) and Next.js build passed. Baseline build warnings persist.
+- Important: REST `/api/v1` and existing server actions have NOT been secured by this change. Do not issue broad bearer tokens to AI or enable model-controlled REST writes. Issue #11 remains P0 until token purpose, per-object authorization and durable approvals are implemented.
+- Check review PR and actual HEAD/CI before continuing. Keep both existing Draft PRs unmerged.
+
 ## Required first actions
 1. `git status --short --branch` and `git fetch origin upstream`, inspect any commits newer than this handoff; never overwrite newer work.
 2. Inspect current PR #1 and a separate integration Draft PR (check GitHub; do not assume merged).

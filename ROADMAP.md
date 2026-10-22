@@ -18,7 +18,8 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 - [x] Run upstream tests (199 passed + 1 skipped), isolated Node case tests (8 passed), and Next.js production build (pass).
 - [x] PostgreSQL 16 local-only dev DB started, all 62 Prisma migrations successful and Next.js setup wizard verified HTTP 200 on localhost.
 - [x] Linux GitHub Actions integration test/build passed at baseline commit `e44763ace62fefd992f5267f48f321353847bc06`.
-- [ ] Resolve/triage inherited lint failures (90 errors, 21 warnings); dependency/secret/security review, tenant scopes, AI write tool safety, real UI clickthrough and backup restore remain open.
+- [x] E1 security increment: fail-closed read-only MCP discovery AND invocation allowlist (13 tests); no MCP writes enabled. This is not full P0 closure: REST write tokens, server actions, tenant-object RBAC, versioned approvals and audit remain.
+- [ ] Resolve/triage inherited lint failures (90 errors, 21 warnings); dependency/secret/security review, tenant scopes, REST write token safety, real UI clickthrough and backup restore remain open.
 - [ ] Assess current dashboard, tickets, documents, banking and financial calculation implementation before modifying.
 - [ ] Prepare deterministic 6-unit synthetic dataset (also 12 and 50 unit variants).
 **Gate:** Repeatable builds; source provenance and a scoped feature gap map, no real user data.

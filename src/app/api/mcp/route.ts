@@ -1,11 +1,13 @@
 import { authenticateBearer, type ApiPrincipal } from "@/lib/api-auth";
+import { isMcpReadOnlyTool } from "@/lib/mcp-tool-policy";
 import * as data from "@/lib/api-data";
 import { apiCreate, apiUpdate, apiDelete, listEntities, ENTITIES } from "@/lib/api-write";
 import { runOperation, listOperations, OPERATION_NAMES } from "@/lib/api-ops";
 
 // MCP-Server (Model Context Protocol) über Streamable HTTP / JSON-RPC.
-// Auth: Bearer-Token (persönlicher API-Token). Der Agent (Claude, ChatGPT,
-// beliebiger MCP-Client) kann damit den Bestand lesen, verstehen und bearbeiten.
+// Auth: Bearer-Token (persönlicher API-Token).
+// Model-facing MCP exposes read-only tools exclusively. Human approval cannot
+// be inferred from this token. No write tools until versioned approval exists.
 // Stateless: jede POST-Anfrage ist eigenständig, Antwort als application/json.
 
 const PROTOCOL = "2024-11-05";
@@ -283,10 +285,13 @@ export async function POST(req: Request) {
       return rpc(id, {});
     case "tools/list":
       return rpc(id, {
-        tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
+        tools: TOOLS.filter((t) => isMcpReadOnlyTool(t.name)).map((t) => ({
+          name: t.name, description: t.description, inputSchema: t.inputSchema,
+        })),
       });
     case "tools/call": {
-      const tool = TOOLS.find((t) => t.name === params?.name);
+      // Enforce allowlist on invocation too: discovery filtering alone is insecure.
+      const tool = TOOLS.find((t) => t.name === params?.name && isMcpReadOnlyTool(t.name));
       if (!tool) return rpcError(id, -32602, `Unbekanntes Tool: ${params?.name}`);
       try {
         const result = await tool.run(principal, params?.arguments ?? {});
