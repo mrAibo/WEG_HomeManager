@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { saveDashboardCaseAction } from "@/server/actions/ai-cases";
 import { Camera, FileText, MessageSquare, ClipboardCopy, ShieldCheck } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { prepareLocalCaseDraft, type CaseInputKind, type LocalCaseDraft } from "@/lib/case-draft";
@@ -10,8 +11,8 @@ import { Input } from "@/components/ui/input";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
-// No uploads, OCR, API writes or external sends. An explicit prototype for E2.
-export function CaseIntake() {
+// Case text may be saved with explicit user action; file contents are NEVER uploaded.
+export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
   const photoInput = useRef<HTMLInputElement>(null);
   const documentInput = useRef<HTMLInputElement>(null);
   const [kind, setKind] = useState<CaseInputKind>("question");
@@ -20,11 +21,15 @@ export function CaseIntake() {
   const [draft, setDraft] = useState<LocalCaseDraft | null>(null);
   const [reviewed, setReviewed] = useState(false);
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
+  const [savedCaseId, setSavedCaseId] = useState<string | null>(null);
 
   function invalidate() {
     setDraft(null);
     setReviewed(false);
     setMessage("");
+    setSavedCaseId(null);
   }
 
   function chooseFile(mode: "photo" | "document", file: File | undefined) {
@@ -50,10 +55,37 @@ export function CaseIntake() {
   function prepare() {
     try {
       setDraft(prepareLocalCaseDraft(kind, description));
+      setSavedCaseId(null);
       setReviewed(false);
       setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Bitte Eingabe überprüfen.");
+    }
+  }
+
+  async function saveCase() {
+    if (!canSave || !reviewed || !draft || saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
+    setMessage("");
+    try {
+      const result = await saveDashboardCaseAction({
+        kind: kind === "photo" ? "PHOTO" : kind === "document" ? "DOCUMENT" : "QUESTION",
+        description,
+        title: draft.subject,
+        body: draft.body,
+      });
+      if (result.ok && result.caseId) {
+        setSavedCaseId(result.caseId);
+        setMessage("Vorgang mit Textentwurf gespeichert. Dateien wurden nicht hochgeladen.");
+      } else {
+        setMessage(result.error ?? "Vorgang konnte nicht gespeichert werden.");
+      }
+    } catch {
+      setMessage("Vorgang konnte nicht gespeichert werden.");
+    } finally {
+      setSaving(false);
+      saveLock.current = false;
     }
   }
 
@@ -74,8 +106,9 @@ export function CaseIntake() {
           Was kann ich für Sie erledigen?
         </h2>
         <p className="text-sm text-muted-foreground">
-          Beschreiben Sie Ihr Anliegen. Hier bereiten Sie einen bearbeitbaren Entwurf vor –
-          ohne Speicherung, automatische KI-Auswertung oder Versand.
+          Beschreiben Sie Ihr Anliegen und prüfen Sie den bearbeitbaren Textentwurf.
+          {canSave ? "Sie können diesen Vorgang ausdrücklich speichern." : "Speichern ist der Verwaltung vorbehalten."}
+          {" "}Keine KI-Auswertung oder Versand.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -147,21 +180,21 @@ export function CaseIntake() {
               <div>
                 <h3 className="font-semibold">Entwurf prüfen und bearbeiten</h3>
                 <p className="text-sm text-muted-foreground">
-                  Regelbasierte Textvorlage, noch kein KI-Ergebnis. Kein Ticket, keine
-                  Datei und keine Freigabe werden gespeichert. Es erfolgt kein Versand.
+                  Regelbasierte Textvorlage, noch kein KI-Ergebnis. Fotos und Dokumente
+                  bleiben lokal und sind nicht Teil des gespeicherten Vorgangs. Kein Versand.
                 </p>
               </div>
             </div>
             <label htmlFor="weg-case-subject" className="block text-sm font-medium">Betreff</label>
             <Input
-              id="weg-case-subject" value={draft.subject} maxLength={160}
+              id="weg-case-subject" value={draft.subject} maxLength={160} disabled={!!savedCaseId}
               onChange={(event) => {
                 setDraft({ ...draft, subject: event.target.value }); setReviewed(false); setMessage("");
               }}
             />
             <label htmlFor="weg-case-body" className="block text-sm font-medium">Entwurfstext</label>
             <textarea
-              id="weg-case-body" value={draft.body} rows={9}
+              id="weg-case-body" value={draft.body} rows={9} disabled={!!savedCaseId}
               className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               onChange={(event) => {
                 setDraft({ ...draft, body: event.target.value }); setReviewed(false); setMessage("");
@@ -174,16 +207,30 @@ export function CaseIntake() {
               />
               Ich habe diese Version geprüft und möchte den Text selbst kopieren.
             </label>
-            <Button type="button" disabled={!reviewed || !draft.subject.trim() || !draft.body.trim()} onClick={copyDraft}>
-              <ClipboardCopy className="size-4" /> Geprüften Entwurf kopieren
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" disabled={!reviewed || !draft.subject.trim() || !draft.body.trim()} onClick={copyDraft}>
+                <ClipboardCopy className="size-4" /> Geprüften Entwurf kopieren
+              </Button>
+              {canSave && (
+                <Button type="button" variant="outline"
+                  disabled={!reviewed || saving || !!savedCaseId || !draft.subject.trim() || !draft.body.trim()}
+                  onClick={saveCase}>
+                  {saving ? "Speichert ..." : savedCaseId ? "Gespeichert" : "Vorgang speichern"}
+                </Button>
+              )}
+            </div>
+            {savedCaseId && (
+              <Link href={`/cases/${savedCaseId}`} className="text-sm font-medium underline underline-offset-2">
+                Gespeicherten Vorgang öffnen
+              </Link>
+            )}
           </section>
         )}
         {message && <p role="status" className="text-sm">{message}</p>}
         <p className="text-sm text-muted-foreground">
-          Für gespeicherte Vorgänge nutzen Sie bis zur Case-Integration{" "}
-          <Link href="/tickets" className="underline underline-offset-2">Tickets</Link>{" "}
-          oder <Link href="/documents" className="underline underline-offset-2">Dokumente</Link>.
+          {canSave && <><Link href="/cases" className="underline underline-offset-2">Gespeicherte Vorgänge</Link> · </>}
+          Bestehende Funktionen: <Link href="/tickets" className="underline underline-offset-2">Tickets</Link>{" "}
+          und <Link href="/documents" className="underline underline-offset-2">Dokumente</Link>.
         </p>
       </CardContent>
     </Card>

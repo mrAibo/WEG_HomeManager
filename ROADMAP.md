@@ -26,7 +26,8 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 
 ## E2 — User-first Dashboard and design system (P0; [Issue #7](https://github.com/mrAibo/WEG_HomeManager/issues/7); parallel UX specification before E1, implementation after E1)
 - [x] First guarded UI increment on top of MCP security: primary German intake on existing HaVeWa dashboard, native photo/document pickers, question, editable deterministic text draft, explicit review and copy-only manual handoff. No AI/OCR/upload/persistence or sends; this is NOT the complete vertical Case slice. Local desktop and 360px smoke passed on synthetic tenant.
-- [ ] Next milestone: persisted tenant-scoped Case/Evidence/Proposal and version-bound approval, secure content upload and real AI/OCR with human review; do not present the current local draft as a saved case.
+- [x] First **text-only** persisted Case + versioned human COPY_ONLY review UI, with explicit absence of file upload/OCR/AI.
+- [ ] Next milestone: evidence-backed photo/document uploads, provenance, secure storage and real AI/OCR with human review. Current file picker does not transmit its contents.
 - [ ] Mobile-first responsive web UI; PWA installability if supported by native web/browser primitives without scope creep.
 - [ ] German interface, conversational input, three capture actions: photograph, upload/scan, ask/speak.
 - [ ] Role-aware **"Was ist heute wichtig?"**: urgent cases, AI drafts awaiting review, pending responses, deadlines, bills and reserve summary.
@@ -38,7 +39,7 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 
 ## E3 — Persistent AI Case and trusted approvals (P0; Issue #3)
 - [x] Initial **transactional COPY_ONLY core**: `AiCase`, versioned `AiProposal`, persistent `AiApproval` and `AiCaseEvent`, compound tenant FKs, SHA-256 and optimistic revision guard; no AI-authored actions and no outbound executor. 63rd migration applied to localhost synthetic DB and DB security-smoke passed.
-- [ ] Link authenticated Dashboard server actions and review UI to this core; no identity/role may arrive from client parameters.
+- [x] Authenticated Dashboard saving and `/cases` list/detail/review UI: human manager-only server actions, tenant-filtered data, versioned edit/submit/approve, approved COPY_ONLY text fetched from DB. Seven auth/security unit tests + actual Chrome/PostgreSQL full flow and mobile 360px pass. No binary evidence or actual AI yet.
 - [ ] Immutable file evidence hashes, document access/retention rules and human-linked source citations. Existing HaVeWa `Document`/`storage` should be reused.
 - [ ] Durable scoped execution + idempotency only after authorization/security audit; no model-controlled REST writes or external side effects.
 - [ ] Case/Evidence/Proposal/Approval/Execution/Audit models with immutable source originals and versioning.
