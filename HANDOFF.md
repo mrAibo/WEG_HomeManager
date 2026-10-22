@@ -70,6 +70,13 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - Unit tests: +5 manifest tests, full 262 PASS 1 SKIP, prototype 8 PASS, targeted ESLint and TypeScript PASS, Next build PASS. Actual synthetic database tamper/recover/tamper-after-approval integration PASS; previous DB Evidence smoke and both authenticated Chrome scripts passed (including file download, mobile 360px).
 - No malware scanner, AI/OCR, external sends or production personal data. Next: full coordinated PostgreSQL+file-store backup/restore drill and retention/security audit, followed by safe OCR/provider choice and explicit DPIA if personal data would leave local environment.
 
+## E3 coordinated backup and isolated restore drill (2026-10-22)
+- Work branch `feature/e3-backup-restore-drill`, stacked on Evidence snapshot PR #17; started from clean `896629a489cb828a8ee819447093ca431cea5060`. PR #17 GitHub Actions run 39813824764 SUCCESS, upstream unchanged.
+- `scripts/e3-backup-restore-drill.ts`: synthetic-only guardrails (localhost DB `havewa` on 5432, sole `WEG Demo – Sechs Wohnungen` tenant, all account emails `.invalid`, local Next.js 3000 stopped, exact Docker `havewa-db`). Seed fake Case/PDF, submit and COPY_ONLY approve, back up `pg_dump -Fc` + all private `storage/documents`, checksum file snapshot, restore into unique `weg_restore_<uuid>` scratch Postgres DB and private scratch file folder, validate recovered Case + human approval + all Evidence SHA256 hashes, remove scratch DB/dump/folder and test Case.
+- Actual execution: `E3_COORDINATED_RESTORE_PASS`. Post cleanup verified original DB Case/Evidence counts 0, local storage files 0, scratch database count 0. Original DB/storage never restored over.
+- `docs/weg-homemanager/BACKUP_RESTORE_RUNBOOK.md`: read before production design; **all writers must be quiesced** to capture corresponding DB+file state. Current script is not a backup scheduler or production DR/PITR system. Avoid committing any dump or private content.
+- Next: review linked Draft PR / CI, real file malware/structure security, retention/DSGVO, per-object access logging and REST bearer P0 #11. Before production: encrypted offsite backup/restore under controlled maintenance. No OCR/model or external writes yet.
+
 ## Required first actions
 1. `git status --short --branch` and `git fetch origin upstream`, inspect any commits newer than this handoff; never overwrite newer work.
 2. Inspect current PR #1 and a separate integration Draft PR (check GitHub; do not assume merged).

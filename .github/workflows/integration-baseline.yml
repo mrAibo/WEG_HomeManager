@@ -8,6 +8,9 @@ on:
     paths:
       - 'src/**'
       - 'prisma/**'
+      - 'scripts/**'
+      - 'docs/weg-homemanager/BACKUP_RESTORE_RUNBOOK.md'
+      - '.gitignore'
       - 'package*.json'
       - 'vitest.config.ts'
       - '.github/workflows/integration-baseline.yml'
