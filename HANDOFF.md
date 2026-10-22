@@ -18,7 +18,8 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 - `vitest.config.ts` excludes `prototype/**` so Vitest does not try to run standalone Node tests.
 - Windows / Node v24.19.0 / npm 12.2.0: `npm ci` PASS (851 packages), `npx prisma generate` PASS, `npm test` PASS 199/199 with 1 skipped, `node --test prototype/ai-case/engine.test.mjs` PASS 8/8; `npm run build` PASS.
 - `npm run lint` fails on inherited baseline (90 errors, 21 warnings). Do not hide/disable blanket rules.
-- No running database, legal/accounting validation or real app clickthrough yet. Full test detail in `docs/weg-homemanager/BASELINE_VERIFICATION.md`.
+- Docker Desktop/PostgreSQL 16 now running with container `havewa-db`, bound ONLY to `127.0.0.1:5432`; all 62 migrations applied successfully. Secure random local-only `AUTH_SECRET` stored in ignored `.env` (not in Git). Next.js server started on `http://127.0.0.1:3000` (Windows shell PID `72132` at execution); GET `/` and `/setup` returned HTTP 200 with expected `/de/setup` flow. No admin account created and no UI clickthrough; use browser locally on Aibo to finish synthetic setup.
+- GitHub Actions integration baseline ran successfully: https://github.com/mrAibo/WEG_HomeManager/actions/runs/39765475490 at commit `e44763ace62fefd992f5267f48f321353847bc06`. Full tests documented in `docs/weg-homemanager/BASELINE_VERIFICATION.md`.
 
 ## Required first actions
 1. `git status --short --branch` and `git fetch origin upstream`, inspect any commits newer than this handoff; never overwrite newer work.
@@ -26,7 +27,7 @@ AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask 
 3. Read canonical files and licenses. Record exact current HEAD in STATUS when moving branches.
 4. Evaluate security of existing HaVeWa `src/app/api/mcp/route.ts`, `src/lib/api-auth.ts`, server actions, tenant scope and uploads BEFORE enabling model write tools.
 5. Review inherited lint failures; fix only with scoped changes and tests. Check CI Linux npm 12 script blocking/Prisma generation.
-6. Setup synthetic Postgres and call the existing UI; identify what truly needs changing.
+6. Existing synthetic-only Postgres and local UI are now running. Finish fresh administrator setup on `http://127.0.0.1:3000` using local, secure credentials and validate Dashboard, tickets and documents; do not use demo `admin/admin` credentials.
 7. First user-facing milestone: Dashboard `Was kann ich für Sie erledigen?`, `Foto aufnehmen`, `Dokument hochladen`, `Frage stellen`, `Jetzt wichtig`, `Zur Freigabe` and edit/approve work package.
 8. Do not overclaim OCR, payments or contractor discovery; first case workflow is still a pure prototype.
 

@@ -25,8 +25,11 @@
 
 ## Known failures, not hidden
 - [ ] `npm run lint`: FAIL on imported HaVeWa source, **90 errors and 21 warnings**, mainly repeated `@next/next/no-html-link-for-pages` and React Hook purity/effect rules. Do not label lint green or suppress all rules; create scoped cleanup follow-up.
-- [ ] PostgreSQL connection, migration application, running UI, end-to-end interaction not yet verified.
-- [ ] HaVeWa authorization/MCP write methods, accounting and WEG voting legally/financially audited.
+- [x] PostgreSQL 16 Docker container running on **127.0.0.1:5432**; all 62 Prisma migrations applied successfully to a fresh synthetic-only DB.
+- [x] Next.js production server started on **127.0.0.1:3000**; HTTP GET / and /setup returned 200 and redirected to /de/setup as expected.
+- [x] Linux GitHub Actions [run 39765475490](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39765475490) succeeded for baseline integration SHA `e44763ace62fefd992f5267f48f321353847bc06`.
+- [ ] Setup wizard manually completed, seeded/test user authenticated, interactive UI clickthrough and backup restore: **NOT VERIFIED**.
+- [ ] HaVeWa authorization/MCP write methods, accounting and WEG voting legally/financially audited. Existing PostgreSQL account uses upstream demo credentials on loopback only, **not appropriate for production**.
 - [ ] Dashboard/PWA and AI-first integration implemented: **NOT YET**; existing upstream UI is not our approved redesign.
 - [ ] OCR/vision, search providers, MyHammer API integration, real quotes, payment processing or autonomous emails implemented: **NOT YET**.
 - [ ] Commercial licensing chosen or production rollout authorized.

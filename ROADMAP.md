@@ -16,7 +16,9 @@ A first-time nontechnical German-speaking user can understand the Dashboard, cap
 - [x] Import preserved HaVeWa baseline (original AGPL license, attribution, exact upstream SHA and sync remote) into separate integration branch.
 - [x] Reuse Next.js App Router / TS / PostgreSQL / Prisma / shadcn/ui / Tailwind, Auth.js, REST and MCP; avoid another frontend/backend stack.
 - [x] Run upstream tests (199 passed + 1 skipped), isolated Node case tests (8 passed), and Next.js production build (pass).
-- [ ] Resolve/triage inherited lint failures (90 errors, 21 warnings); database migrations, dependency/secret/security review, tenant scopes and AI write tool safety remain open.
+- [x] PostgreSQL 16 local-only dev DB started, all 62 Prisma migrations successful and Next.js setup wizard verified HTTP 200 on localhost.
+- [x] Linux GitHub Actions integration test/build passed at baseline commit `e44763ace62fefd992f5267f48f321353847bc06`.
+- [ ] Resolve/triage inherited lint failures (90 errors, 21 warnings); dependency/secret/security review, tenant scopes, AI write tool safety, real UI clickthrough and backup restore remain open.
 - [ ] Assess current dashboard, tickets, documents, banking and financial calculation implementation before modifying.
 - [ ] Prepare deterministic 6-unit synthetic dataset (also 12 and 50 unit variants).
 **Gate:** Repeatable builds; source provenance and a scoped feature gap map, no real user data.

@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: havewa
       POSTGRES_DB: havewa
     ports:
-      - "5432:5432"
+      # Local-only development database; do not expose default demo credentials on LAN.
+      - "127.0.0.1:5432:5432"
     volumes:
       - havewa-db:/var/lib/postgresql/data
 
