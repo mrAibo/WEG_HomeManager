@@ -18,6 +18,7 @@
 - New `src/server/actions/ai-cases.test.ts` **7 PASS**: forged actor and tenant ignored, nonmanager denial, exact version propagation, invalid version rejection, opaque internal errors, authenticated copy read, failed authentication.
 - Local real Chrome test: synthetic admin login → Dashboard draft → save in DB → reopen → edit version 2 → submit → human approve → server-approved copy, and mobile width 360 px. `E3_UI_PERSISTENT_CASE_REVIEW_COPY_PASS` / `E3_CASE_MOBILE_360_PASS`. Repeatable synthetic-only `scripts/e3-ui-smoke.mjs` requires `WEG_SMOKE_EMAIL` (`.invalid`) and `WEG_SMOKE_PASSWORD` plus loopback-only `DATABASE_URL`; cleans its own Cases. Not yet in GitHub CI.
 - `npm test`: 235 PASS / 1 SKIP; `node --test prototype/ai-case/engine.test.mjs`: 8 PASS; changed-file ESLint, `npx tsc --noEmit` and `npm run build`: PASS. Existing middleware/Turbopack warnings remain.
+- Source commit `6c131cc4556ae762ae377cc0bb402b171ab5e727` in [Draft PR #15](https://github.com/mrAibo/WEG_HomeManager/pull/15), stacked onto #14. GitHub Actions [run 39792137478](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39792137478) started on source push; check its conclusion before approving.
 - No new DB migration, dependency, second frontend, API/MCP write tools, persistent attachments, AI model calls or real WEG data. E3 still needs safe evidence storage/upload, finer per-object permissions, concurrency/idempotency for create and an improved no-reload UI. REST write token exposure remains Issue #11.
 
 ## E3 database-backed review core (2026-10-22)
