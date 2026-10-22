@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { roleAllows, WRITE_ROLES } from "@/lib/rbac";
+import { isBearerRestMutation } from "@/lib/rest-bearer-policy";
 
 export function hashToken(raw: string): string {
   return crypto.createHash("sha256").update(raw).digest("hex");
@@ -17,6 +18,9 @@ export type ApiPrincipal = { userId: string; tenantId: string; role: UserRole; n
 
 /** Authentifiziert einen Request per Bearer-Token. Null = ungültig. */
 export async function authenticateBearer(req: Request): Promise<ApiPrincipal | null> {
+  // Defense in depth: a new REST mutation route cannot accidentally grant writes
+  // simply by reusing authenticateBearer; MCP JSON-RPC remains read-only elsewhere.
+  if (isBearerRestMutation(req)) return null;
   const header = req.headers.get("authorization") ?? "";
   const m = header.match(/^Bearer\s+(.+)$/i);
   if (!m) return null;

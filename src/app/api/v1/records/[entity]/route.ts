@@ -1,7 +1,10 @@
 import { authenticateBearer, unauthorized } from "@/lib/api-auth";
+import { denyBearerRestMutation } from "@/lib/rest-bearer-policy";
 import { apiCreate, ApiWriteError } from "@/lib/api-write";
 
 export async function POST(req: Request, { params }: { params: Promise<{ entity: string }> }) {
+  const denied = denyBearerRestMutation(req);
+  if (denied) return denied;
   const p = await authenticateBearer(req);
   if (!p) return unauthorized();
   const { entity } = await params;

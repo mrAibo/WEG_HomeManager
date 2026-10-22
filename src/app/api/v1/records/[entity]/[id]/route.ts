@@ -1,9 +1,12 @@
 import { authenticateBearer, unauthorized } from "@/lib/api-auth";
+import { denyBearerRestMutation } from "@/lib/rest-bearer-policy";
 import { apiUpdate, apiDelete, ApiWriteError } from "@/lib/api-write";
 
 type Ctx = { params: Promise<{ entity: string; id: string }> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
+  const denied = denyBearerRestMutation(req);
+  if (denied) return denied;
   const p = await authenticateBearer(req);
   if (!p) return unauthorized();
   const { entity, id } = await params;
@@ -17,6 +20,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(req: Request, { params }: Ctx) {
+  const denied = denyBearerRestMutation(req);
+  if (denied) return denied;
   const p = await authenticateBearer(req);
   if (!p) return unauthorized();
   const { entity, id } = await params;

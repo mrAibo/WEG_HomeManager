@@ -1,4 +1,5 @@
 import { authenticateBearer, unauthorized } from "@/lib/api-auth";
+import { denyBearerRestMutation } from "@/lib/rest-bearer-policy";
 import { listTasks, createTask } from "@/lib/api-data";
 
 export async function GET(req: Request) {
@@ -8,6 +9,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = denyBearerRestMutation(req);
+  if (denied) return denied;
   const p = await authenticateBearer(req);
   if (!p) return unauthorized();
   const body = await req.json().catch(() => null);
