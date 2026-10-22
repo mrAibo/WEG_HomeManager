@@ -51,6 +51,8 @@
 - [#4](https://github.com/mrAibo/WEG_HomeManager/issues/4) Photo/scan intake
 - [#5](https://github.com/mrAibo/WEG_HomeManager/issues/5) Handwerker research, quotes
 - [#6](https://github.com/mrAibo/WEG_HomeManager/issues/6) Invoice accounting assistant
+- [#7](https://github.com/mrAibo/WEG_HomeManager/issues/7) Novice-first Dashboard, responsive WebGUI and usability testing
+- [#8](https://github.com/mrAibo/WEG_HomeManager/issues/8) MyHammer assisted handoff and quote comparison
 
 ## Immediate next step
 1. Inspect repo and PR #1 again to detect new work; keep Draft status until review.
