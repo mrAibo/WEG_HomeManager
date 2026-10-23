@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { CaseReview } from "@/components/case-review";
 import { CaseEvidenceUpload } from "@/components/case-evidence-upload";
 import { CaseRecognition } from "@/components/case-recognition";
+import { triageSchema } from "@/lib/ai-document-triage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function SavedCasePage({
@@ -24,7 +25,7 @@ export default async function SavedCasePage({
         orderBy: { createdAt: "asc" },
         select: { id: true, name: true, mime: true, sha256: true, size: true, createdAt: true,
           recognition: { select: { id: true, provider: true, model: true, rawText: true,
-            editedText: true, unclear: true, status: true, createdAt: true, sourceSha256: true } },
+            editedText: true, unclear: true, triage: true, status: true, createdAt: true, sourceSha256: true } },
         },
       },
       proposals: {
@@ -97,6 +98,7 @@ export default async function SavedCasePage({
                       model={configuredAi?.aiModel ?? null}
                       recognition={evidence.recognition ? {
                         ...evidence.recognition,
+                        triage: triageSchema.safeParse(evidence.recognition.triage).data ?? null,
                         unclear: Array.isArray(evidence.recognition.unclear)
                           ? evidence.recognition.unclear.filter((x): x is string => typeof x === "string")
                           : [],
