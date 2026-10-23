@@ -914,6 +914,7 @@ model Meeting {
   status      MeetingStatus @default(GEPLANT)
   protocol    String? // Protokolltext
   agendaItems AgendaItem[]
+  suggestions MeetingSuggestion[]
   resolutions Resolution[]
   createdAt   DateTime      @default(now())
 
@@ -1387,4 +1388,25 @@ model AiRecognition {
   @@unique([tenantId, id])
   @@unique([tenantId, caseId, evidenceId])
   @@index([tenantId, caseId, createdAt])
+}
+
+// Questions/suggestions from authenticated owners or residents are not agenda items.
+// A WEG manager must explicitly approve inclusion; receipt is not a legal decision.
+model MeetingSuggestion {
+  id            String   @id @default(cuid())
+  tenantId      String
+  meetingId     String
+  meeting       Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  submittedById String
+  submittedRole UserRole
+  title         String   @db.VarChar(160)
+  description   String   @db.Text
+  status        String   @default("NEW")
+  reviewedById  String?
+  reviewedAt    DateTime?
+  agendaItemId  String?
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId, meetingId, createdAt])
+  @@index([tenantId, submittedById])
 }

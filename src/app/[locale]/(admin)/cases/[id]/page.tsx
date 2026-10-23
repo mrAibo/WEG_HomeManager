@@ -74,7 +74,7 @@ export default async function SavedCasePage({
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><h2 className="text-base font-semibold">Beweismittel ({item.evidence.length})</h2></CardHeader>
+        <CardHeader><h2 className="text-base font-semibold">Dokumente &amp; Fotos / Beweismittel ({item.evidence.length})</h2></CardHeader>
         <CardContent className="space-y-4">
           {item.evidence.length === 0 ? (
             <p className="text-sm text-muted-foreground">Noch keine Foto- oder PDF-Dateien hochgeladen.</p>

@@ -1,5 +1,6 @@
 import { getTranslations, getLocale } from "next-intl/server";
-import { Plus } from "lucide-react";
+import { Plus, MessageSquarePlus } from "lucide-react";
+import { submitMeetingSuggestion } from "@/server/actions/meeting-suggestions";
 import { requireUser } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { money, date, decimal } from "@/lib/format";
@@ -11,7 +12,10 @@ import { CrudDialog } from "@/components/crud-dialog";
 import { TextField, TextAreaField } from "@/components/form-fields";
 import { reportIssue } from "@/server/actions/portal";
 
-export default async function PortalPage() {
+export default async function PortalPage({ searchParams }: {
+  searchParams: Promise<{ anregung?: string }>;
+}) {
+  const sp = await searchParams;
   const user = await requireUser();
   const t = await getTranslations();
   const locale = await getLocale();
@@ -46,7 +50,7 @@ export default async function PortalPage() {
     ]),
   );
 
-  const [resolutions, documents] = await Promise.all([
+  const [resolutions, documents, plannedMeetings, mySuggestions] = await Promise.all([
     propertyIds.length
       ? prisma.resolution.findMany({
           where: { tenantId: user.tenantId, propertyId: { in: propertyIds } },
@@ -60,6 +64,20 @@ export default async function PortalPage() {
     dbUser?.personId
       ? prisma.document.findMany({ where: { tenantId: user.tenantId, personId: dbUser.personId }, orderBy: { createdAt: "desc" } })
       : Promise.resolve([]),
+    (user.role === "EIGENTUEMER" ? owners.length > 0 : renters.length > 0)
+      ? prisma.meeting.findMany({
+          where: { tenantId: user.tenantId, propertyId: { in: user.role === "EIGENTUEMER"
+            ? owners.map(o => o.unit.building.propertyId)
+            : renters.map(r => r.lease.unit.building.propertyId) }, status: "GEPLANT" },
+          include: { property: { select: { name: true } } },
+          orderBy: { date: "asc" }, take: 15,
+        })
+      : Promise.resolve([]),
+    prisma.meetingSuggestion.findMany({
+      where: { tenantId: user.tenantId, submittedById: user.id },
+      orderBy: { createdAt: "desc" }, take: 20,
+      select: { id: true, title: true, status: true, createdAt: true },
+    }),
   ]);
 
   const myTickets = await prisma.ticket.findMany({
@@ -67,7 +85,6 @@ export default async function PortalPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const now = new Date();
   const openItems = renters.flatMap((r) =>
     r.lease.charges
       .map((c) => {
@@ -98,6 +115,71 @@ export default async function PortalPage() {
         </h1>
         <p className="text-sm text-muted-foreground">{t(`userRole.${user.role}`)}</p>
       </div>
+
+      {(user.role === "EIGENTUEMER" || user.role === "MIETER") && (
+        <Card className="border-teal-200 bg-teal-50/50 dark:border-teal-900 dark:bg-teal-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <MessageSquarePlus className="size-5 text-teal-700" />
+              Vorschlag oder Bitte für die nächste Versammlung
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Eigentümer und Bewohner können Themen, Fragen und Anregungen einreichen.
+              Die Verwaltung prüft sie. Eine Einreichung wird nicht automatisch zur Tagesordnung
+              oder zu einem Beschluss.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {sp.anregung === "eingereicht" && (
+              <p role="status" className="rounded-lg border border-teal-300 bg-white p-3 text-sm text-teal-900">
+                Anregung gespeichert. Die Verwaltung kann sie jetzt prüfen.
+              </p>
+            )}
+            {plannedMeetings.length ? (
+              <form action={submitMeetingSuggestion} className="grid max-w-xl gap-3">
+                <label className="grid gap-1 text-sm font-medium">
+                  Versammlung
+                  <select name="meetingId" required className="rounded-lg border border-input bg-background p-2">
+                    {plannedMeetings.map(m => (
+                      <option key={m.id} value={m.id}>{m.property.name} · {m.title}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  Ihr Thema
+                  <input name="title" required minLength={5} maxLength={160}
+                    placeholder="z. B. Beleuchtung im Treppenhaus"
+                    className="rounded-lg border border-input bg-background p-2" />
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  Worum geht es?
+                  <textarea name="description" required minLength={10} maxLength={2500} rows={3}
+                    placeholder="Beschreiben Sie Ihren Vorschlag oder Ihre Frage."
+                    className="rounded-lg border border-input bg-background p-2"/>
+                </label>
+                <Button type="submit" className="w-fit">Anregung zur Prüfung einreichen</Button>
+              </form>
+            ) : <p className="text-sm text-muted-foreground">
+              Zurzeit ist für Ihre verknüpfte Immobilie keine geplante Versammlung hinterlegt.
+              Für dringende Anliegen nutzen Sie bitte die normale Kontaktaufnahme.
+            </p>}
+            {mySuggestions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold">Meine bisherigen Anregungen</p>
+                {mySuggestions.map(s => (
+                  <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-background p-3 text-sm">
+                    <span>{s.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {s.status === "NEW" ? "Eingegangen · Prüfung offen" :
+                        s.status === "ADDED" ? "In die Tagesordnung übernommen" : "Geprüft · nicht auf der Tagesordnung"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Mieter: Mietverhältnisse */}
       {renters.length > 0 && (

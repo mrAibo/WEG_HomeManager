@@ -75,7 +75,8 @@
     "groupFinance": "Finanzen & Abrechnung",
     "groupOperations": "Betrieb",
     "groupMore": "Weitere",
-    "groupAdmin": "Administration"
+    "groupAdmin": "Administration",
+    "cases": "Gespeicherte Vorgänge"
   },
   "dashboard": {
     "title": "Dashboard",

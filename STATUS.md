@@ -2,12 +2,20 @@
 
 **Verified on:** 2026-10-23, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E8 WEG HomeManager brand, Gmail labeled IMAP + approval-gated SMTP, and Windows launcher independent of Docker. Synthetic-only; no real Gmail credentials or mail.
+**Current focus:** E9 guided WEG first-run UX, durable one-click file intake, synthetic six-apartment demo, owner/resident meeting proposals with human review. Synthetic-only; no live mail or external AI.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `feature/e8-mail-and-branding` (stacked on AI document recognition Draft PR #23; all previous PRs Draft/unmerged).
+**Branch:** `feature/e9-guided-workflow-meetings` (stacked on Draft PR #24 and prior Drafts; main untouched).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E9 guided UX, saved files and meeting suggestions (2026-10-23)
+- UI root cause: the old Dashboard `Dokument auswählen` only retained a transient browser File; it disappeared on navigation without long description → template → checkbox → save. Added **explicit `Dokument jetzt ablegen` quick action** saving a Case and its immutable Evidence before showing a durable link. Errors distinguish "Case saved but file not saved" from success. Recent Case list + saved-file counts and sidebar `Gespeicherte Vorgänge` keep files discoverable.
+- Redesigned German-first Dashboard with teal/navy welcome hero, three starter workflow cards, persistent recent Cases, optional expandable KPIs and AI Assistant; improved default theme and sidebar/section guidance. `ModuleGuide` with "Was ist das?" and first step for each module, navigation tooltips and collapsible advanced groups. Source component/CSS changes rather than static design mockups.
+- Meeting Detail now includes human-only meeting prep checklist and manager review queue. New additive `MeetingSuggestion` model/67th migration: owner or resident with **server-checked Person→Owner/Renter→Unit→Property** can submit to planned meeting in `/portal`; manager/ADMIN can explicitly add it as a TOP or mark not included. Suggestions NEVER automatically turn into agenda, email, payment or legal decision. Full invitation recipient/attachments process not implemented, checkboxes not persisted.
+- Added opt-in guarded `scripts/e9-seed-guided-demo.ts` and **actually created** one strictly synthetic 6-unit WEG, owner and resident portal demo users (secrets saved outside Git), meeting, three agenda items, two proposals and two pdf-lib-generated synthetic PDF Cases. WEG example contains fake names/address; original personal PDFs untracked and never touched. 67 localhost-only Prisma migrations current.
+- `scripts/e9-guided-ui-smoke.mjs`: real Chrome QA admin selects synthetic PDF **without description**, quick saves, navigates Meetings→Cases→Case and confirms original Evidence persisted (**E9_FILE_PERSISTENCE_PASS**); owner proposes topic via portal, admin explicitly approves into agenda; results and DB confirmed (**E9_SUGGESTION_REVIEW_PASS**). Temporary smoke Case/file/suggestion/agenda removed; permanent synthetic samples untouched.
+- Final local tests: `npm test` **332 PASS / 1 SKIP**, AI prototype **8 PASS**; TypeScript, scoped ESLint, production `npm run build`, E6 PDF worker package test **PASS**. Synthetic-only Prisma migration **67 up-to-date**. Opt-in demo seeding re-run confirmed **idempotent**. Windows Next server restarted `127.0.0.1:3000`, login HTTP 200. See `docs/weg-homemanager/UX_GUIDED_E9.md` for account details, limits and release gates. No real PDFs/AI/SMTP/production data.
 
 ## E8 branded UI, Gmail inbound/outbound policy and Docker-free launcher (2026-10-23)
 - Started on clean PR #23 HEAD `ef4eb3073192d1ab924fe61ab48ab3f087ec610a`. Original user-provided PDFs `Aufteilungsplan.PDF` and `Teilungserklärung.PDF` are untracked in repo root and must NEVER be added to Git, GitHub or synthetic testing.

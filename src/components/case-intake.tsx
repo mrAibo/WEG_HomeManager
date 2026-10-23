@@ -24,6 +24,7 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
   const [reviewed, setReviewed] = useState(false);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "saved" | "failed">("idle");
   const saveLock = useRef(false);
   const [savedCaseId, setSavedCaseId] = useState<string | null>(null);
 
@@ -32,6 +33,7 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
     setReviewed(false);
     setMessage("");
     setSavedCaseId(null);
+    setUploadStatus("idle");
   }
 
   function chooseFile(mode: "photo" | "document", file: File | undefined) {
@@ -64,6 +66,58 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
       setMessage("");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Bitte Eingabe überprüfen.");
+    }
+  }
+
+  // Quick document filing: one explicit action creates a durable Case AND
+  // attempts an Evidence upload. Picking a file never claims it was saved.
+  async function storeSelectedDocument() {
+    const file = selectedFile.current;
+    if (!canSave || !file || saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
+    setUploadStatus("idle");
+    setMessage("Speichere den Vorgang und prüfe die Datei ...");
+    try {
+      const cleanName = file.name.replace(/[\\/\r\n]/g, " ").slice(0, 120);
+      const detail = description.trim().length >= 10
+        ? description.trim()
+        : `Eingehendes Dokument: ${cleanName}. Bitte Inhalt und Zuordnung prüfen.`;
+      const created = await saveDashboardCaseAction({
+        kind: kind === "photo" ? "PHOTO" : "DOCUMENT",
+        description: detail,
+        title: `Dokument prüfen: ${cleanName}`.slice(0, 160),
+        body: `Eingang: ${cleanName}\n\nBeschreibung: ${detail}\n\nNächste Schritte: Originaldatei prüfen, WEG zuordnen und ggf. die KI-Texterkennung separat starten.\n\nKeine Nachricht oder Zahlung wurde ausgelöst.`,
+      });
+      if (!created.ok || !created.caseId) {
+        setMessage(created.error ?? "Vorgang konnte nicht gespeichert werden.");
+        setUploadStatus("failed");
+        return;
+      }
+      const fd = new FormData();
+      fd.set("caseId", created.caseId);
+      fd.set("file", file);
+      const uploaded = await uploadCaseEvidenceAction(fd).catch(() => ({
+        ok: false, error: "Die Übertragung ist fehlgeschlagen.",
+      }));
+      setSavedCaseId(created.caseId);
+      if (uploaded.ok) {
+        selectedFile.current = null;
+        setSelected(null);
+        if (documentInput.current) documentInput.current.value = "";
+        if (photoInput.current) photoInput.current.value = "";
+        setUploadStatus("saved");
+        setMessage("Dokument dauerhaft im Vorgang gespeichert. Es wurde weder an KI gesendet noch veröffentlicht.");
+      } else {
+        setUploadStatus("failed");
+        setMessage(`Vorgang wurde erstellt, aber die Datei NICHT gespeichert: ${uploaded.error ?? "Bitte im Vorgang erneut hochladen."}`);
+      }
+    } catch {
+      setUploadStatus("failed");
+      setMessage("Speichern fehlgeschlagen. Bitte Gespeicherte Vorgänge auf mögliche Teil-Erfolge prüfen.");
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
     }
   }
 
@@ -128,9 +182,9 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
           Was kann ich für Sie erledigen?
         </h2>
         <p className="text-sm text-muted-foreground">
-          Beschreiben Sie Ihr Anliegen und prüfen Sie den bearbeitbaren Textentwurf.
-          {canSave ? "Sie können diesen Vorgang ausdrücklich speichern." : "Speichern ist der Verwaltung vorbehalten."}
-          {" "}Keine KI-Auswertung oder Versand.
+          Beginnen Sie mit einer Datei oder Frage. Eine Dateiauswahl allein speichert noch nichts.
+          Dokumente lassen sich mit einem Klick in einem dauerhaften Vorgang ablegen;
+          für Fragen können Sie zunächst einen Textentwurf vorbereiten. Keine automatische KI oder E-Mail.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -169,14 +223,21 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
           onChange={(event) => chooseFile("document", event.target.files?.[0])}
         />
         {selected && (
-          <p className="rounded-md bg-muted px-3 py-2 text-sm">
+          <div className="rounded-xl border border-teal-200 bg-teal-50/60 px-4 py-3 text-sm text-slate-800 dark:border-teal-800 dark:bg-teal-950/30 dark:text-slate-100">
             Ausgewählt: {selected.name} ({Math.ceil(selected.size / 1024)} KB).
             {canSave ? (
-              <>Bei „Vorgang speichern“ wird sie als Beweismittel hochgeladen; keine OCR- oder KI-Auswertung.</>
+              <>Noch nicht gespeichert. Klicken Sie unten auf „Dokument jetzt ablegen“.
+              Danach finden Sie die Datei jederzeit unter „Gespeicherte Vorgänge“.</>
             ) : (
               <>Die Datei wird für diese Rolle nicht hochgeladen.</>
             )}
-          </p>
+          </div>
+        )}
+        {selected && canSave && !savedCaseId && (
+          <Button type="button" className="w-full min-h-12 sm:w-auto" onClick={storeSelectedDocument} disabled={saving}>
+            <FileText className="size-4" />
+            {saving ? "Datei wird geprüft und gespeichert ..." : "Dokument jetzt ablegen"}
+          </Button>
         )}
         <div className="space-y-2">
           <label htmlFor="weg-case-description" className="text-sm font-medium">
@@ -252,7 +313,21 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
             )}
           </section>
         )}
-        {message && <p role="status" className="text-sm">{message}</p>}
+        {message && (
+          <div role="status" aria-live="polite"
+            className={`rounded-xl border px-4 py-3 text-sm ${uploadStatus === "saved"
+              ? "border-teal-300 bg-teal-50 text-teal-900 dark:bg-teal-950/30 dark:text-teal-200"
+              : uploadStatus === "failed"
+              ? "border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+              : "bg-muted/50"}`}>
+            <p>{message}</p>
+            {savedCaseId && (
+              <Link href={`/cases/${savedCaseId}`} className="mt-2 inline-block font-semibold underline underline-offset-2">
+                {uploadStatus === "saved" ? "Gespeichertes Dokument öffnen →" : "Vorgang öffnen und Datei erneut hochladen →"}
+              </Link>
+            )}
+          </div>
+        )}
         <p className="text-sm text-muted-foreground">
           {canSave && <><Link href="/cases" className="underline underline-offset-2">Gespeicherte Vorgänge</Link> · </>}
           Bestehende Funktionen: <Link href="/tickets" className="underline underline-offset-2">Tickets</Link>{" "}

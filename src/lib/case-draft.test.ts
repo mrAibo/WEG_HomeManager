@@ -10,7 +10,8 @@ describe("safe local case draft", () => {
   });
   it("does not claim document OCR or upload", () => {
     const draft = prepareLocalCaseDraft("document", "Die letzte Abrechnung muss überprüft werden.");
-    expect(draft.body).toContain("nicht ausgelesen oder hochgeladen");
+    expect(draft.body).toContain("ausdrücklichen Speichern");
+    expect(draft.body).not.toContain("automatisch ausgelesen");
   });
   it("treats questions as internal notes, not fabricated AI answers", () => {
     const draft = prepareLocalCaseDraft("question", "Wann ist unsere nächste Eigentümerversammlung?");
