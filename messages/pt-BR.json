@@ -75,7 +75,8 @@
     "groupFinance": "Financeiro e demonstrativos",
     "groupOperations": "Operações",
     "groupMore": "Mais",
-    "groupAdmin": "Administração"
+    "groupAdmin": "Administração",
+    "cases": "Processos salvos"
   },
   "dashboard": {
     "title": "Painel",

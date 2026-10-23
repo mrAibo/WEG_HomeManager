@@ -3,6 +3,14 @@
 **Updated:** 2026-10-22. **Work in progress:** HaVeWa E1 integration exists in separate review branch `integration/havewa-baseline`; source merged locally, 199 upstream + 8 prototype tests pass and Next.js build passes, but lint reports 90 errors / 21 warnings and DB/functional/security audits remain. See `STATUS.md` and `docs/weg-homemanager/BASELINE_VERIFICATION.md`.
 Single source of truth for priorities. See [STATUS](STATUS.md), [HANDOFF](HANDOFF.md), [UX](docs/weg-homemanager/UX_DASHBOARD.md), [marketplaces](docs/weg-homemanager/CONTRACTOR_MARKETPLACES.md).
 
+## E9 — Guided-first WEG dashboard and meeting prep (2026-10-23)
+- [x] Explain and fix transient document picker: quick explicit upload to persistent Case/Evidence, feedback on success vs partial failure, recent saved Cases and sidebar.
+- [x] Modernize Dashboard color, welcome hero, 3 next steps, hide advanced KPIs/AI Assistant until expanded; contextual module hints for all navigation paths.
+- [x] Synthetic seeded 6-apartment WEG, upcoming meeting, meeting proposals, generated PDF material, portal owner/resident demo accounts. Production/real document use remains forbidden.
+- [x] Add authenticated owner/tenant meeting suggestion submission tied to their linked Property, pending review, manager-controlled agenda promotion and audit identity/timestamps.
+- [ ] Persist meeting preparation checklist and generate individually reviewed invitation packet for owners, proxies and participants with legally verified lead times, attachment set and optional manual email outbox; no AI sending unattended.
+- [ ] Finalize tenant/GDPR, field extraction provenance, installation and account bootstrap for non-synthetic real operations.
+
 ## E8 — Branding and WEG mailbox (2026-10-23)
 - [x] Default UI rebranded to WEG HomeManager across login/setup/sidebar/About, custom SVG assets and old marketing landing; retain upstream AGPL attribution.
 - [x] Gmail IMAP adapter refuses broad INBOX/All Mail and imports only explicit label; outbound Gmail plus-alias identity policy, Reply-To sender and no false GESENDET when SMTP unavailable.

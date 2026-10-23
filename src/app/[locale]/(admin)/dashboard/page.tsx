@@ -13,6 +13,12 @@ import {
   X,
   Check,
   ChevronRight,
+  FolderHeart,
+  FilePlus2,
+  CalendarCheck2,
+  ArrowUpRight,
+  Sparkles,
+  LayoutGrid,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/rbac";
@@ -79,6 +85,14 @@ export default async function DashboardPage() {
     prisma.maintenanceContract.count({ where: { tenantId, nextDue: { gte: now, lte: in30 } } }),
   ]);
 
+  const latestCases = await prisma.aiCase.findMany({
+    where: { tenantId },
+    orderBy: { createdAt: "desc" },
+    take: 4,
+    select: { id: true, summary: true, kind: true, createdAt: true,
+      _count: { select: { evidence: true } } },
+  });
+
   const isOccupied = (ls: { startDate: Date; endDate: Date | null }[]) =>
     ls.some((l) => l.startDate <= now && (!l.endDate || l.endDate >= now));
   const totalUnits = units.length;
@@ -139,13 +153,96 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <CaseIntake canSave={user.role === "ADMIN" || user.role === "VERWALTER"} />
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("dashboard.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>
-      </div>
+    <div className="space-y-7">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-800/10 bg-gradient-to-br from-[#12374c] via-[#165c61] to-[#21877b] p-6 text-white shadow-lg shadow-slate-900/10 sm:p-9">
+        <div className="pointer-events-none absolute -right-16 -top-24 size-72 rounded-full border border-white/15" />
+        <div className="pointer-events-none absolute -bottom-28 right-16 size-64 rounded-full bg-white/5 blur-2xl" />
+        <div className="relative max-w-3xl space-y-4">
+          <p className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-medium tracking-wide">
+            <Sparkles className="size-3.5" /> WEG HomeManager · Ihre Arbeitszentrale
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Was möchten Sie heute erledigen?</h1>
+          <p className="max-w-xl text-base leading-relaxed text-teal-50/90">
+            Beginnen Sie mit einer Datei, einer Frage oder einer Versammlung.
+            Die nächsten Schritte erklären wir direkt dort, wo Sie arbeiten.
+          </p>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <a href="#neues-anliegen" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 py-2 font-semibold text-[#154751] shadow-sm transition hover:bg-teal-50">
+              <FilePlus2 className="size-4" /> Dokument ablegen
+            </a>
+            <Link href="/cases" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/40 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20">
+              <FolderHeart className="size-4" /> Gespeicherte Vorgänge
+            </Link>
+          </div>
+        </div>
+      </section>
 
+      <section className="grid gap-3 md:grid-cols-3" aria-label="Empfohlene erste Schritte">
+        {[
+          { href: "/properties", title: "1. Immobilie einrichten",
+            text: "Objekt, Wohnungen und Miteigentumsanteile prüfen.", icon: LayoutGrid },
+          { href: "/documents", title: "2. Dokumente ordnen",
+            text: "Originale, Belege und Verträge an einer Stelle finden.", icon: FilePlus2 },
+          { href: "/meetings", title: "3. Versammlung vorbereiten",
+            text: "Tagesordnung, Anregungen und Unterlagen sichten.", icon: CalendarCheck2 },
+        ].map(action => (
+          <Link key={action.href} href={action.href}
+            className="group flex gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md dark:border-border dark:bg-card">
+            <span className="rounded-xl bg-teal-50 p-3 text-teal-700 dark:bg-teal-950 dark:text-teal-300">
+              <action.icon className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">{action.title}</span>
+              <span className="mt-1 block text-sm text-muted-foreground">{action.text}</span>
+            </span>
+            <ArrowUpRight className="size-4 shrink-0 text-muted-foreground transition group-hover:text-teal-700"/>
+          </Link>
+        ))}
+      </section>
+
+      <section id="neues-anliegen" className="scroll-mt-20">
+        <CaseIntake canSave={user.role === "ADMIN" || user.role === "VERWALTER"} />
+      </section>
+
+      <section className="rounded-2xl border bg-card p-5 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold">Zuletzt gespeicherte Vorgänge</h2>
+            <p className="text-sm text-muted-foreground">
+              Hier sehen Sie, ob Ihre Datei tatsächlich gespeichert wurde – auch nach einem Seitenwechsel.
+            </p>
+          </div>
+          <Link href="/cases" className="text-sm font-semibold text-teal-700 hover:underline dark:text-teal-300">
+            Alle Vorgänge öffnen →
+          </Link>
+        </div>
+        {latestCases.length ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {latestCases.map(item => (
+              <Link key={item.id} href={`/cases/${item.id}`}
+                className="flex items-center justify-between gap-2 rounded-xl border p-3 transition hover:bg-muted/50">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{item.summary}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item._count.evidence} Datei(en) · {item.createdAt.toLocaleDateString("de-DE")}
+                  </p>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground"/>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+            Noch nichts gespeichert. Wählen Sie oben ein Dokument und klicken Sie auf „Dokument jetzt ablegen“.
+          </p>
+        )}
+      </section>
+
+      <details className="group rounded-2xl border bg-card p-4 shadow-sm">
+        <summary className="cursor-pointer list-none text-base font-semibold [&::-webkit-details-marker]:hidden">
+          Kennzahlen & Auswertungen anzeigen <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+        </summary>
+        <div className="mt-5 space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <Card key={s.key}>
@@ -191,6 +288,9 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+        </div>
+      </details>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Hinweise */}
@@ -274,7 +374,12 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <AiAssistant />
+      <details className="group rounded-2xl border bg-card p-4 shadow-sm">
+        <summary className="cursor-pointer list-none font-semibold [&::-webkit-details-marker]:hidden">
+          KI-Assistent öffnen <span className="text-xs font-normal text-muted-foreground">(optional, getrennt von der Dateispeicherung)</span>
+        </summary>
+        <div className="mt-4"><AiAssistant /></div>
+      </details>
 
       <Card>
         <CardHeader>

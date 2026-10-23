@@ -18,6 +18,7 @@ export default async function CasesPage() {
     take: 40,
     select: {
       id: true, kind: true, summary: true, createdAt: true,
+      _count: { select: { evidence: true } },
       property: { select: { name: true } },
       proposals: {
         orderBy: { createdAt: "desc" }, take: 1,
@@ -30,8 +31,9 @@ export default async function CasesPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">Gespeicherte Vorgänge</h1>
         <p className="text-sm text-muted-foreground">
-          Interne Textentwürfe zur Bearbeitung und Freigabe. Keine automatischen
-          Aufträge, Zahlungen, E-Mails oder Veröffentlichungen.
+          Hier finden Sie dauerhaft gespeicherte Dokumente, Fotos und Fragen.
+          Klicken Sie einen Vorgang an, um den Originalanhang und den Textentwurf zu öffnen.
+          Keine automatischen Aufträge, Zahlungen oder E-Mails.
         </p>
         <Link href="/dashboard" className="text-sm font-medium underline underline-offset-2">
           Neuen Vorgang auf dem Dashboard vorbereiten
@@ -51,6 +53,7 @@ export default async function CasesPage() {
                   <CardTitle>{item.summary}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <span>{item._count.evidence} gespeicherte Datei(en)</span>
                   <span>{item.kind === "PHOTO" ? "Fotobeschreibung" :
                     item.kind === "DOCUMENT" ? "Dokumentenbeschreibung" : "Frage"}</span>
                   <span>{item.property?.name ?? "Noch keinem Objekt zugeordnet"}</span>

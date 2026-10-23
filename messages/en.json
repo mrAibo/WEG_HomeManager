@@ -75,7 +75,8 @@
     "groupFinance": "Finance & Statements",
     "groupOperations": "Operations",
     "groupMore": "More",
-    "groupAdmin": "Administration"
+    "groupAdmin": "Administration",
+    "cases": "Saved cases"
   },
   "dashboard": {
     "title": "Dashboard",

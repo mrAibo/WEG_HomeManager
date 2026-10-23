@@ -16,6 +16,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { APP_VERSION_LABEL, APP_VERSION_FULL } from "@/lib/version";
+import { ChevronDown } from "lucide-react";
+import { moduleHints } from "@/lib/module-help";
 
 export function AppSidebar({ logoUrl, superAdmin = false }: { logoUrl?: string; superAdmin?: boolean }) {
   const t = useTranslations();
@@ -34,9 +36,16 @@ export function AppSidebar({ logoUrl, superAdmin = false }: { logoUrl?: string; 
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {navGroups.map((group) => (
-          <SidebarGroup key={group.labelKey}>
-            <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
+        {navGroups.map((group) => {
+          const advanced = group.labelKey === "nav.groupMore" || group.labelKey === "nav.groupAdmin";
+          const inThisGroup = group.items.some(item => pathname === item.href || pathname.startsWith(item.href + "/"));
+          return (
+          <SidebarGroup key={group.labelKey} className={advanced ? "border-t border-sidebar-border/70 pt-2" : ""}>
+            <details key={group.labelKey + pathname} className="group/nav" open={!advanced || inThisGroup}>
+              <summary className="flex cursor-pointer list-none items-center justify-between pr-3 [&::-webkit-details-marker]:hidden">
+                <SidebarGroupLabel>{t(group.labelKey)}</SidebarGroupLabel>
+                {advanced && <ChevronDown className="size-3.5 text-muted-foreground transition group-open/nav:rotate-180" />}
+              </summary>
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.filter((item) => !item.superAdmin || superAdmin).map((item) => {
@@ -45,9 +54,9 @@ export function AppSidebar({ logoUrl, superAdmin = false }: { logoUrl?: string; 
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
-                        render={<Link href={item.href} />}
+                        render={<Link href={item.href} title={moduleHints[item.href]?.why} />}
                         isActive={active}
-                        tooltip={t(item.key)}
+                        tooltip={moduleHints[item.href]?.why ?? t(item.key)}
                       >
                         <item.icon />
                         <span>{t(item.key)}</span>
@@ -57,8 +66,10 @@ export function AppSidebar({ logoUrl, superAdmin = false }: { logoUrl?: string; 
                 })}
               </SidebarMenu>
             </SidebarGroupContent>
+            </details>
           </SidebarGroup>
-        ))}
+          );
+        })}
       </SidebarContent>
       <SidebarFooter>
         <div className="px-2 py-1 text-xs text-muted-foreground" title={APP_VERSION_FULL}>

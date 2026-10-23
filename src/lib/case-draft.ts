@@ -21,7 +21,7 @@ export function prepareLocalCaseDraft(kind: CaseInputKind, description: string):
   if (kind === "document") {
     return {
       subject: `Dokumentenprüfung: ${summary}`,
-      body: `Bitte prüfen:\n${detail}\n\nPrüfschritte:\n- Dokument manuell im Dokumentenbereich ablegen.\n- Datum, Absender und mögliche Fristen kontrollieren.\n- Zuständigkeit und weiteres Vorgehen bestimmen.\n\nDie ausgewählte Datei wurde nicht ausgelesen oder hochgeladen.`,
+      body: `Bitte prüfen:\n${detail}\n\nPrüfschritte:\n- Gespeicherten Vorgang und angehängte Originaldatei öffnen.\n- Datum, Absender und mögliche Fristen kontrollieren.\n- Zuständigkeit und weiteres Vorgehen bestimmen.\n\nEine gewählte Datei bleibt bis zum ausdrücklichen Speichern nur im Browser. Nach dem Speichern den Dateianhang im Vorgang prüfen.`,
     };
   }
   return {

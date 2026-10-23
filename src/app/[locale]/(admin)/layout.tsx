@@ -6,6 +6,7 @@ import { readableForeground } from "@/lib/color";
 import { NotificationBell } from "@/components/notification-bell";
 import { InfoDrawer } from "@/components/info-drawer";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ModuleGuide } from "@/components/module-guide";
 import {
   SidebarInset,
   SidebarProvider,
@@ -74,7 +75,9 @@ export default async function AdminLayout({
             <UserMenu name={user.name} email={user.email} role={user.role} />
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 bg-slate-50/70 p-4 dark:bg-background md:p-7">
+          <div className="mx-auto max-w-[1500px]"><ModuleGuide />{children}</div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
