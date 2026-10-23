@@ -2,12 +2,19 @@
 
 **Verified on:** 2026-10-23, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E9 guided WEG first-run UX, durable one-click file intake, synthetic six-apartment demo, owner/resident meeting proposals with human review. Synthetic-only; no live mail or external AI.
+**Current focus:** E10 one-call multimodal AI document understanding: OCR plus classification, source-linked facts, suggested next steps. User-selected model, explicit per-file consent, strictly read-only suggestions. Synthetic-only; no live mail or external AI.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `feature/e9-guided-workflow-meetings` (stacked on Draft PR #24 and prior Drafts; main untouched).
+**Branch:** `feature/e10-ai-document-triage` (stacked on Draft PR #25 and prior Drafts; main untouched).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E10 AI document triage, source evidence and suggested actions (2026-10-23)
+- Reused existing provider-agnostic Anthropic/OpenAI-compatible PDF/vision transcription. With explicit per-document permission, **one model call** now requests both OCR and a strictly bounded `triage` category, uncertainty/confidence, possible sender/WEG/date hints, evidence-backed facts and 1–5 suggested next actions. User chooses model; no hidden model substitution.
+- Strict Zod schema in `src/lib/ai-document-triage.ts`: categories/actions fixed whitelist; unrecognized URLs/actions/fields rejected; facts' evidence quotes must be exact substrings of OCR text. Validated in provider parser AND DB workflow (also validates stub recognizers). Incompatible/older model responses can still use prior OCR-only format, shown as `keine Einordnung`.
+- Additive **68th** nullable Prisma migration `AiRecognition.triage` with existing saved OCR intact. Read-only displayed `KI-Einschätzung` on saved Case: suggested category, model-calculated (uncalibrated) confidence, possible WEG/sender/deadline, facts with quotes, prioritized next-step links to existing fixed modules. Links do not execute payment, booking, email, agenda changes or AI-generated commands. Triage may be stale after manual OCR correction; warning visible.
+- New `src/lib/ai-document-triage.test.ts` checks valid evidence, rejects hallucinated spans, out-of-whitelist actions, extra fields, invalid dates/oversize. Existing provider mock extended: **one vision model call** returns OCR + suggestions; DB smoke persists triage + allows human correction without changing proposal; actual local Chrome mocked-provider smoke **E10_TRIAGE_CHROME_PASS** (no real external API, no personal data).
+- Real private PDFs `Aufteilungsplan.PDF` and `Teilungserklärung.PDF` untouched and never added to GitHub. See `docs/weg-homemanager/AI_DOCUMENT_TRIAGE.md`. Final local QA: **337 PASS / 1 SKIP** Vitest (56 files), TypeScript/scoped ESLint/prod Next build PASS; strict synthetic DB smoke `E7_RECOGNITION_DB_PASS` now asserts stored triage, Chrome local stub `E10_TRIAGE_CHROME_PASS` with actual persistence and human correction, original approval unchanged; 68 migrations applied. No production data, provider calls, payments, mail or model bill. Production use, unattended provider calls, property reassignment, physical archiving or real payment/email actions still blocked.
 
 ## E9 guided UX, saved files and meeting suggestions (2026-10-23)
 - UI root cause: the old Dashboard `Dokument auswählen` only retained a transient browser File; it disappeared on navigation without long description → template → checkbox → save. Added **explicit `Dokument jetzt ablegen` quick action** saving a Case and its immutable Evidence before showing a durable link. Errors distinguish "Case saved but file not saved" from success. Recent Case list + saved-file counts and sidebar `Gespeicherte Vorgänge` keep files discoverable.

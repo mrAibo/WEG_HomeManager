@@ -58,13 +58,23 @@ async function main() {
       expect(file.bytes.equals(bytes) && config.model === "any-user-model",
         "Adapter receives exact selected model and original bytes");
       return { text: "Rechnung Nr. [unleserlich]\nGesamtbetrag 47,20 €",
-        unclear: ["Rechnungsnummer unleserlich"] };
+        unclear: ["Rechnungsnummer unleserlich"],
+        triage: {
+          category: "INVOICE" as const, confidence: 0.84,
+          explanation: "Dokument enthält einen Gesamtbetrag.", senderHint: null,
+          propertyHint: null, documentDate: null, dueDate: null,
+          facts: [{label: "Gesamtbetrag", value: "47,20 €", evidence: "Gesamtbetrag 47,20 €"}],
+          actions: [{code: "VERIFY_INVOICE" as const,
+            explanation: "Betrag im Original prüfen", priority: "NORMAL" as const}],
+        },
+      };
     };
     await recognizeSavedEvidence(actor, id, evidence.id, true, fake);
     expect(calls === 1, "Exactly one mock recognition call");
     const recognition = await prisma.aiRecognition.findUniqueOrThrow({ where: { evidenceId: evidence.id } });
     expect(recognition.status === "DRAFT" && recognition.sourceSha256 === row.sha256 &&
-      recognition.provider === "openai" && recognition.model === "any-user-model",
+      recognition.provider === "openai" && recognition.model === "any-user-model" &&
+      (recognition.triage as {category?: string}|null)?.category === "INVOICE",
       "Recognition must be separate untrusted persistent draft bound to original");
     await mustReject(() => recognizeSavedEvidence(actor, id, evidence.id, true, fake), "duplicate model request");
     expect(calls === 1, "Duplicate must be denied before provider invocation");

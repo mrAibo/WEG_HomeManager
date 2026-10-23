@@ -1378,6 +1378,7 @@ model AiRecognition {
   rawText      String     @db.Text
   editedText   String?    @db.Text
   unclear      Json
+  triage       Json?       // Klassifikation / Handlungsvorschläge, KEINE Befehle, nie freigegeben
   status       String     @default("DRAFT")
   reviewedById String?
   reviewedAt   DateTime?

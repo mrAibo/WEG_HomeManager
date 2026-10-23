@@ -16,7 +16,18 @@ const base = "http://127.0.0.1:3000";
 const port = 34173;
 const expectedModel = "tiny-vision-demo";
 const resultText = "Rechnung Nr. [unleserlich]\nSumme 47,20 EUR";
-const expectedResult = JSON.stringify({ text: resultText, unclear: ["Rechnungsnummer unleserlich"] });
+const expectedResult = JSON.stringify({
+  text: resultText,
+  unclear: ["Rechnungsnummer unleserlich"],
+  triage: {
+    category: "INVOICE", confidence: 0.82,
+    explanation: "Im Dokument wird ein Geldbetrag genannt.",
+    senderHint: null, propertyHint: "WEG Musterhaus (nur Vorschlag)",
+    documentDate: null, dueDate: null,
+    facts: [{label:"Summe",value:"47,20 EUR",evidence:"Summe 47,20 EUR"}],
+    actions: [{code:"VERIFY_INVOICE",explanation:"Betrag prüfen, nicht bezahlen",priority:"NORMAL"}],
+  },
+});
 const sourcePath = path.join(process.cwd(), "storage", "documents");
 const digest = value => crypto.createHash("sha256").update(value).digest("hex");
 function check(value, msg) { if (!value) throw Error(msg); }
@@ -103,11 +114,13 @@ async function main() {
     await page.locator("form button[type=submit]").click();
     await page.waitForURL(url => !url.pathname.endsWith("/login"));
     await page.goto(base + "/de/cases/" + caseId);
-    await page.getByText("KI-Texterkennung (optional)").waitFor();
+    await page.getByText("Dokument verstehen lassen (KI, optional)").waitFor();
     await page.getByText("Gewähltes Modell: openai / " + expectedModel).waitFor();
-    await page.getByRole("checkbox", { name: /Ich möchte dieses Dokument ausdrücklich/ }).check();
-    await page.getByRole("button", { name: "Text mit KI erkennen" }).click();
+    await page.getByRole("checkbox", { name: /Ich stimme zu, dass dieses Dokument/ }).check();
+    await page.getByRole("button", { name: "Dokument mit KI analysieren" }).click();
     await page.getByText(/KI-Erkennung · ungeprüfter Entwurf/).waitFor({ timeout: 30000 });
+    await page.getByRole("heading",{name:"Rechnung"}).waitFor({timeout:10000});
+    await page.getByText("Rechnungsdaten gegen Original prüfen").waitFor();
     const id = evidence.id;
     const field = page.locator("#recognition-" + id);
     await field.waitFor();
@@ -120,12 +133,13 @@ async function main() {
     check(row.status === "REVIEWED" && row.provider === "openai" &&
       row.model === expectedModel && row.reviewedById === admin.id &&
       row.sourceSha256 === digest(bytes) &&
+      row.triage?.category === "INVOICE" &&
       row.editedText?.includes("— geprüft"), "recognized and reviewed persistent state mismatch");
     const proposal = await prisma.aiProposal.findFirstOrThrow({ where: { caseId } });
     check(proposal.state === "DRAFT" && proposal.origin === "TEMPLATE" && proposal.body === "Nur Testtext",
       "model changed unrelated Case proposal");
     check(invoked === 1, "only one local provider call permitted");
-    console.log("E7_RECOGNITION_CHROME_PASS: explicit consent, chosen model, local-only PDF, review, unchanged proposal");
+    console.log("E10_TRIAGE_CHROME_PASS: one local-only model call, document class + suggested actions + human correction, unchanged proposal");
   } finally {
     await browser?.close();
     await new Promise(resolve => mock.close(resolve));
