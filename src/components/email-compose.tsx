@@ -82,6 +82,11 @@ export function EmailCompose({
         </Button>
       }
     >
+      <label className="flex items-start gap-2 rounded-md border p-2 text-xs">
+        <input type="checkbox" name="confirmSend" value="yes" className="mt-0.5" />
+        Ich habe Empfänger, Inhalt und Anhänge geprüft. Nur nach diesem Häkchen wird
+        „Senden“ tatsächlich für den Versand freigegeben; sonst bleibt ein Entwurf.
+      </label>
       {replyTo && (
         <>
           <input type="hidden" name="replyKind" value={replyTo.kind} />

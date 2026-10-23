@@ -1,13 +1,13 @@
 {
   "app": {
-    "name": "HaVeWa",
-    "tagline": "Gestão imobiliária"
+    "name": "WEG HomeManager",
+    "tagline": "Gestão imobiliária com IA"
   },
   "about": {
-    "title": "Sobre o HaVeWa",
+    "title": "Sobre WEG HomeManager",
     "tagline": "Gestão imobiliária e condominial",
     "beta": "Beta",
-    "betaNote": "O HaVeWa está em fase beta. Os recursos podem mudar; reporte problemas em \"Relatar um problema\".",
+    "betaNote": "WEG HomeManager é uma versão de teste local. Não use documentos pessoais reais, pagamentos ou ações de IA sem confirmação.",
     "version": "Versão",
     "build": "Compilação",
     "tenant": "Organização",

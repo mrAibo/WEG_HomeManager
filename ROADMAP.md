@@ -3,6 +3,14 @@
 **Updated:** 2026-10-22. **Work in progress:** HaVeWa E1 integration exists in separate review branch `integration/havewa-baseline`; source merged locally, 199 upstream + 8 prototype tests pass and Next.js build passes, but lint reports 90 errors / 21 warnings and DB/functional/security audits remain. See `STATUS.md` and `docs/weg-homemanager/BASELINE_VERIFICATION.md`.
 Single source of truth for priorities. See [STATUS](STATUS.md), [HANDOFF](HANDOFF.md), [UX](docs/weg-homemanager/UX_DASHBOARD.md), [marketplaces](docs/weg-homemanager/CONTRACTOR_MARKETPLACES.md).
 
+## E8 — Branding and WEG mailbox (2026-10-23)
+- [x] Default UI rebranded to WEG HomeManager across login/setup/sidebar/About, custom SVG assets and old marketing landing; retain upstream AGPL attribution.
+- [x] Gmail IMAP adapter refuses broad INBOX/All Mail and imports only explicit label; outbound Gmail plus-alias identity policy, Reply-To sender and no false GESENDET when SMTP unavailable.
+- [x] Explicit checkbox required to schedule new outbound message; otherwise remains draft. Other inherited bulk/system-mail workflows must be audited before production.
+- [x] No-Docker Windows launcher for existing/native PostgreSQL; source/DB can stay native without a Docker runtime.
+- [ ] Real account Gmail OAuth encrypted credentials, controlled Gmail send-as verification, rate/size limits and exact read scope; user approval for live testing. Never connect personal inbox/test DB until privacy gates complete.
+- [ ] Complete no-Docker installer with native Windows PostgreSQL provisioning, service account and coordinated backup/restore (current script only launches already installed components).
+
 ## Success criterion
 A first-time nontechnical German-speaking user can understand the Dashboard, capture a problem by photo, review/edit the proposed action, and know exactly what happens next. AI handles preparation; only authorized people execute consequential actions. No hidden automation or uncertain claims.
 

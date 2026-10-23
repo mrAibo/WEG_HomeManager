@@ -1,6 +1,7 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { selectAttachments, refIds } from "@/lib/inbound";
+import { validateImapMailbox } from "@/lib/mailbox-safety";
 
 // Eingehende Mails per IMAP abrufen (Kommunikationsverlauf, #39). Konfiguration
 // je Mandant (Einstellungen), sonst ENV-Fallback.
@@ -39,6 +40,7 @@ function resolve(cfg?: ImapConfig) {
   const password = cfg?.password || process.env.IMAP_PASSWORD || "";
   const secure = cfg?.secure ?? port === 993;
   const mailbox = cfg?.mailbox || process.env.IMAP_MAILBOX || "INBOX";
+  validateImapMailbox(host, mailbox, user);
   return { host, port, user, password, secure, mailbox };
 }
 

@@ -23,15 +23,15 @@ export default async function SetupPage() {
       {/* Produkt-Icon unten rechts im Video-Bereich */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/marketing/icon.png"
-        alt="HaVeWa"
+        src="/weg-home-manager-icon.svg"
+        alt="WEG HomeManager"
         className="pointer-events-none absolute bottom-6 right-6 h-16 w-auto object-contain opacity-90 drop-shadow-lg"
       />
 
       <Card className="w-full max-w-xl border-white/10 bg-card/95 shadow-2xl backdrop-blur">
         <CardHeader className="items-center text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="HaVeWa" className="mx-auto mb-2 h-48 w-auto object-contain drop-shadow" />
+          <img src="/weg-home-manager.svg" alt="WEG HomeManager" className="mx-auto mb-2 h-48 w-auto object-contain drop-shadow" />
           <CardTitle className="text-xl">{t("setup.title")}</CardTitle>
           <CardDescription>{t("setup.subtitle")}</CardDescription>
         </CardHeader>

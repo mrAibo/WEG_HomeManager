@@ -1,10 +1,18 @@
 # WEG HomeManager — engineering handoff for next agent
 
-**Date:** 2026-10-22
+**Date:** 2026-10-23
 **Repo:** https://github.com/mrAibo/WEG_HomeManager
 **Canonical docs:** `AGENTS.md`, `STATUS.md`, `ROADMAP.md`
 **Primary architecture:** existing HaVeWa Next.js/TypeScript/PostgreSQL/Prisma reused; mobile-first Dashboard and future PWA.
 **Device/local path:** Aibo / `C:\Users\crown\Downloads\Projects\WEG_HomeManager`
+
+## E8 2026-10-23 — Gmail plus alias, WEG brand and no-Docker launch
+- User requests `crownru+weg@gmail.com` **both inbound and outbound**, and clarifies HaVeWa artwork in screenshots is unwanted inherited upstream marketing, not product behavior. Synthetic local login credentials are in the ignored parent-level `WEG_HomeManager_LOCAL_TEST_CREDENTIALS.json`; do not commit them, raw Gmail credentials or WEG PDFs.
+- Branch `feature/e8-mail-and-branding` from clean #23 HEAD `ef4eb3073192d1ab924fe61ab48ab3f087ec610a`. Inherited root PDFs `Aufteilungsplan.PDF`, `Teilungserklärung.PDF` are **untracked, private**, never stage them.
+- New WEG vector `public/weg-home-manager.svg`, `public/weg-home-manager-icon.svg`; updated default login, setup, sidebar, portal, locale app metadata, About and standalone /marketing. About preserves HaVeWa/Florian Gilde AGPL-3.0 origin credit, no competing huge logo/official website advert.
+- Gmail IMAP label-only policy in `src/lib/mailbox-safety.ts` and adapter. Explicit `WEG-HomeManager` label recommended; `INBOX` and broad Google mail folders refused. Account credentials still have broader IMAP rights. SMTP adapter validates matching Gmail From vs account, sets Reply-To and fails if SMTP missing (fixes false GESENDET); `createEmail` now requires explicit `confirmSend=yes` composer checkbox before queuing, otherwise a draft. Existing bulk and legacy scheduled send workflows still need separate approval review.
+- Windows local launcher `start-weg-homemanager.cmd` + `scripts/start-weg-local.ps1` depends only on Node24, existing build, protected .env and running PostgreSQL on localhost:5432. Works with future **native PostgreSQL Windows service**; does not provision, migrate or change Docker/Windows. Installation notes `docs/weg-homemanager/MAILBOX_AND_LOCAL_LAUNCH.md`.
+- Local checks: Vitest **330 PASS, 1 SKIP** (+17 policy), 8 Node AI prototype PASS, TypeScript, changed-file ESLint, Next production build and PDF worker bundle PASS. Chrome login/InfoDrawer source attribution PASS; local launcher detects running app; login/logo/marketing HTTP 200. No real Gmail OAuth, app password, sending, inbox sync or production DB migration performed. Separate user approval/provider terms required for live Gmail and GDPR data; never leak personal inbox into synthetic test DB.
 
 ## User decisions — do NOT ask again
 AI-first, Lazy Admin, highest priority novice usability. Upload photo/scan, ask in German, agent researches/organizes real evidence and suggests editable documents and actions. Human explicitly approves consequential sends, orders, bookkeeping and decisions. Reuse upstream/stdlib/native/browser/dependencies per Ponytail before writing code. No native rewrite, no unsanctioned MyHammer bots/scraping. Use synthetic fixtures; never commit real WEG data.

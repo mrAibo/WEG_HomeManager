@@ -24,7 +24,7 @@ export default async function LoginPage() {
   const isDemo = tenant?.isDemo ?? false;
   const sso = oidcConfigFromEnv();
   // Eigenes Admin-Logo, sonst Produkt-Logo
-  const logoUrl = tenant?.logoKey ? "/api/logo" : "/logo.png";
+  const logoUrl = tenant?.logoKey ? "/api/logo" : "/weg-home-manager.svg";
   const videos = await listBackgroundVideos();
 
   const points = [t("login.point1"), t("login.point2"), t("login.point3")];
@@ -76,8 +76,8 @@ export default async function LoginPage() {
         {/* Produkt-Icon unten rechts im Video-Bereich */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/marketing/icon.png"
-          alt="HaVeWa"
+          src="/weg-home-manager-icon.svg"
+          alt="WEG HomeManager"
           className="pointer-events-none absolute bottom-6 right-6 h-20 w-auto object-contain opacity-90 drop-shadow-lg"
         />
       </div>

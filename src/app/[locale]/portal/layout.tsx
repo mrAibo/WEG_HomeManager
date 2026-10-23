@@ -31,11 +31,11 @@ export default async function PortalLayout({ children }: { children: React.React
       <header className="flex h-14 items-center gap-2 border-b bg-background px-4">
         <Link href="/portal" className="flex items-center gap-2 font-semibold">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.png" alt="HaVeWa" className="size-7 rounded-md" />
-          HaVeWa
+          <img src="/weg-home-manager-icon.svg" alt="WEG HomeManager" className="size-7 rounded-md" />
+          WEG HomeManager
         </Link>
         <div className="ml-auto flex items-center gap-1">
-          <InfoDrawer tenantName={tenant?.name ?? "HaVeWa"} />
+          <InfoDrawer tenantName={tenant?.name ?? "WEG HomeManager"} />
           <NotificationBell items={notifItems} unread={unread} />
           <LanguageSwitcher />
           <ThemeToggle />

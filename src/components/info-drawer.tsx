@@ -11,11 +11,10 @@ import {
 } from "@/components/ui/sheet";
 import { APP_VERSION_FULL_NUMBER, APP_VERSION_LABEL, APP_BUILD, APP_SHA } from "@/lib/version";
 
-const DOCS_URL = "https://fgilde.github.io/hausverwaltung/docs/";
-const SITE_URL = "https://havewa.app";
-const ISSUES_URL = "https://github.com/fgilde/hausverwaltung/issues";
-const GILDE_URL = "https://www.gilde.org";
-const GILDE_LOGO = "https://www.gilde.org/gilde/logo.svg";
+const DOCS_URL = "https://github.com/mrAibo/WEG_HomeManager";
+const SITE_URL = "https://github.com/mrAibo/WEG_HomeManager";
+const ISSUES_URL = "https://github.com/mrAibo/WEG_HomeManager/issues";
+const UPSTREAM_URL = "https://github.com/fgilde/hausverwaltung";
 
 export function InfoDrawer({ tenantName }: { tenantName: string }) {
   const t = useTranslations("about");
@@ -41,10 +40,10 @@ export function InfoDrawer({ tenantName }: { tenantName: string }) {
           <div className="relative flex flex-col items-center text-center">
             <div className="grid size-56 place-items-center rounded-3xl bg-white/15 shadow-lg ring-1 ring-white/30 backdrop-blur">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="HaVeWa" className="size-48 rounded-2xl object-contain" />
+              <img src="/weg-home-manager.svg" alt="WEG HomeManager" className="size-48 rounded-2xl object-contain" />
             </div>
             <SheetTitle className="mt-4 text-2xl font-semibold tracking-tight text-white">
-              HaVeWa
+              WEG HomeManager
             </SheetTitle>
             <p className="text-sm text-white/80">{t("tagline")}</p>
           </div>
@@ -105,37 +104,17 @@ export function InfoDrawer({ tenantName }: { tenantName: string }) {
             ))}
           </nav>
 
-          {/* Gilde-Signatur mit animiertem Logo */}
-          <a
-            href={GILDE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="gilde-sig group mt-2 flex flex-col items-center gap-2 rounded-xl border bg-gradient-to-b from-muted/40 to-transparent px-4 py-5 text-center transition-colors hover:border-primary/40"
-          >
-            <span className="text-[11px] uppercase tracking-widest text-muted-foreground">{t("madeBy")}</span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={GILDE_LOGO} alt="Gilde" className="gilde-logo h-10 w-auto" />
-            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
-              www.gilde.org <ExternalLink className="size-3" />
-            </span>
-          </a>
+          {/* Maintained upstream attribution, not a product promotion. */}
+          <p className="rounded-lg border p-3 text-center text-xs text-muted-foreground">
+            WEG HomeManager basiert auf{" "}
+            <a className="underline" href={UPSTREAM_URL} target="_blank" rel="noopener noreferrer">
+              HaVeWa von Florian Gilde
+            </a>
+            {" "} (AGPL-3.0). Die ursprünglichen Urheberhinweise und Lizenztexte bleiben erhalten.
+          </p>
         </div>
 
-        <style>{`
-          @keyframes gildeFloat { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(-2deg); } }
-          .gilde-logo {
-            animation: gildeFloat 4s ease-in-out infinite;
-            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15));
-            transition: transform .4s ease, filter .4s ease;
-            transform-origin: center;
-          }
-          .gilde-sig:hover .gilde-logo {
-            animation-play-state: paused;
-            transform: scale(1.12) rotate(6deg);
-            filter: drop-shadow(0 8px 18px rgba(0,0,0,0.28));
-          }
-          @media (prefers-reduced-motion: reduce) { .gilde-logo { animation: none; } }
-        `}</style>
+
       </SheetContent>
     </Sheet>
   );

@@ -26,7 +26,7 @@ export function AppSidebar({ logoUrl, superAdmin = false }: { logoUrl?: string; 
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoUrl ?? "/icon.png"} alt="HaVeWa" className="size-8 rounded-md object-contain" />
+          <img src={logoUrl ?? "/weg-home-manager-icon.svg"} alt="WEG HomeManager" className="size-8 rounded-md object-contain" />
           <div className="grid leading-tight">
             <span className="font-semibold">{t("app.name")}</span>
             <span className="text-xs text-muted-foreground">{t("app.tagline")}</span>
