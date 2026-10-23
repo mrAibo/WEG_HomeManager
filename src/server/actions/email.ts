@@ -11,6 +11,7 @@ import { sanitizeMailHtml, isEmptyHtml } from "@/server/mail-sanitize";
 import { htmlToText, escapeHtml, textToHtml } from "@/lib/mail-html";
 import { fileWohnungsgeber, wohnungsgeberPdf } from "@/server/wohnungsgeber";
 import { refIds, threadKey } from "@/lib/inbound";
+import { canQueueHumanMail } from "@/lib/mailbox-safety";
 import { threadWhere } from "@/lib/threads";
 
 /**
@@ -68,7 +69,10 @@ export async function createEmail(_p: ActionState, fd: FormData): Promise<Action
   });
   await audit(user, "CREATE", "EmailMessage", msg.id, r.data.subject);
   // „Senden“ plant die Mail ein (#79), „Als Entwurf speichern“ lässt sie liegen
-  const notice = fd.get("intent") === "draft" ? "draft" : await queueEmails(user.tenantId, [msg.id], user);
+  // Explicit human acknowledgement required before scheduling or sending.
+  const notice = canQueueHumanMail(String(fd.get("intent") ?? ""), String(fd.get("confirmSend") ?? ""))
+    ? await queueEmails(user.tenantId, [msg.id], user)
+    : "draft";
   revalidatePath("/", "layout");
   return { ok: true, notice };
 }

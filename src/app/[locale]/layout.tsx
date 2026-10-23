@@ -12,8 +12,9 @@ const heading = Space_Grotesk({ variable: "--font-heading", subsets: ["latin"], 
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "HaVeWa — Hausverwaltung",
-  description: "Immobilienverwaltung für Miet- und WEG-Verwaltung",
+  title: "WEG HomeManager — Hausverwaltung mit KI",
+  description: "WEG HomeManager: lokale Hausverwaltung mit KI-Unterstützung",
+  icons: { icon: "/weg-home-manager-icon.svg" },
 };
 
 export function generateStaticParams() {

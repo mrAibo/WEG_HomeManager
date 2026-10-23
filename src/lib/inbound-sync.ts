@@ -62,7 +62,11 @@ export async function syncTenantInbox(tenantId: string): Promise<InboundSyncResu
     host: tenant?.imapHost, port: tenant?.imapPort, user: tenant?.imapUser,
     password: tenant?.imapPassword, secure: tenant?.imapSecure, mailbox: tenant?.imapMailbox,
   };
-  if (!isImapConfigured(cfg)) return { error: "Kein IMAP-Postfach konfiguriert (Einstellungen → E-Mail)." };
+  try {
+    if (!isImapConfigured(cfg)) return { error: "Kein IMAP-Postfach konfiguriert (Einstellungen → E-Mail)." };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "IMAP-Mailbox nicht zugelassen." };
+  }
 
   // Etwas Überlappung zum letzten Sync, damit nichts verloren geht (Dedup fängt Doppelte).
   const since = tenant?.lastInboundSyncAt

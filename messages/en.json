@@ -1,13 +1,13 @@
 {
   "app": {
-    "name": "HaVeWa",
-    "tagline": "Property Management"
+    "name": "WEG HomeManager",
+    "tagline": "AI-assisted property management"
   },
   "about": {
-    "title": "About HaVeWa",
+    "title": "About WEG HomeManager",
     "tagline": "Property & HOA management",
     "beta": "Beta",
-    "betaNote": "HaVeWa is in its beta testing phase. Features may change; please report bugs via \"Report an issue\".",
+    "betaNote": "WEG HomeManager is a local test build. Do not use real personal documents, financial transactions or unapproved AI actions.",
     "version": "Version",
     "build": "Build",
     "tenant": "Tenant",

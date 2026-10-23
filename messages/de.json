@@ -1,13 +1,13 @@
 {
   "app": {
-    "name": "HaVeWa",
-    "tagline": "Hausverwaltung"
+    "name": "WEG HomeManager",
+    "tagline": "Immobilienverwaltung mit KI"
   },
   "about": {
-    "title": "Über HaVeWa",
+    "title": "Über WEG HomeManager",
     "tagline": "Haus- & WEG-Verwaltung",
     "beta": "Beta",
-    "betaNote": "HaVeWa befindet sich in der Beta-Testphase. Funktionen können sich ändern; Fehler bitte über „Issue melden“ zurückmelden.",
+    "betaNote": "WEG HomeManager ist eine lokale Testversion. Keine echten personenbezogenen Dokumente, Bankaufträge oder unbestätigten KI-Aktionen verwenden.",
     "version": "Version",
     "build": "Build",
     "tenant": "Mandant",

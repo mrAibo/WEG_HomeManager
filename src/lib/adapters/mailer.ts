@@ -1,5 +1,6 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import { validateGmailSender } from "@/lib/mailbox-safety";
 
 // Mail-Versand über SMTP. Konfiguration kommt aus der Mandanten-Einstellung
 // und fällt sonst auf ENV (SMTP_HOST, SMTP_PORT, …) zurück.
@@ -20,6 +21,7 @@ function resolve(cfg?: SmtpConfig) {
   const password = cfg?.password || process.env.SMTP_PASSWORD || "";
   const from = cfg?.from || process.env.SMTP_FROM || user;
   const secure = cfg?.secure ?? port === 465;
+  validateGmailSender(host, user, from);
   return { host, port, user, password, from, secure };
 }
 
@@ -64,10 +66,11 @@ export interface OutgoingMail {
 
 /** Versendet eine Mail über den konfigurierten SMTP-Server. Wirft bei Fehler. */
 export async function sendMail(mail: OutgoingMail, cfg?: SmtpConfig): Promise<void> {
-  if (!isMailerConfigured(cfg)) return; // ohne Konfiguration: lokale Queue, kein Versand
+  if (!isMailerConfigured(cfg)) throw new Error("Kein SMTP konfiguriert; Nachricht wurde nicht versendet.");
   const { transport, from } = transporter(cfg);
   await transport.sendMail({
     from,
+    replyTo: from,
     to: mail.to,
     cc: mail.cc,
     bcc: mail.bcc,

@@ -279,7 +279,7 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>{t("dashboard.recentProperties")}</CardTitle>
-          <CardDescription>{properties.length} · HaVeWa</CardDescription>
+          <CardDescription>{properties.length} · WEG HomeManager</CardDescription>
         </CardHeader>
         <CardContent>
           {properties.length === 0 ? (

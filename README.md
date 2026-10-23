@@ -37,6 +37,8 @@ The AI prepares. Authorized humans review, correct and approve. Only then may an
 - [MyHammer & Handwerker marketplaces](docs/weg-homemanager/CONTRACTOR_MARKETPLACES.md)
 - [Reuse-first policy](docs/weg-homemanager/REUSE_POLICY.md)
 - [Single-PC Windows deployment checklist](docs/weg-homemanager/SINGLE_PC_INSTALLATION.md)
+- [Gmail WEG mailbox + Windows launcher without Docker](docs/weg-homemanager/MAILBOX_AND_LOCAL_LAUNCH.md)
+- **Windows quick start:** double-click `start-weg-homemanager.cmd` while PostgreSQL is running (native Windows service or existing Docker test container).
 
 **UX:** responsive novice-friendly WebGUI in the intended HaVeWa Next.js architecture; PWA as a progressive improvement. No separate desktop/native stack for the first release.
 

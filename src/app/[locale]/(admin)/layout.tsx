@@ -67,7 +67,7 @@ export default async function AdminLayout({
             </a>
           )}
           <div className="ml-auto flex items-center gap-1">
-            <InfoDrawer tenantName={tenant?.name ?? "HaVeWa"} />
+            <InfoDrawer tenantName={tenant?.name ?? "WEG HomeManager"} />
             <NotificationBell items={notifItems} unread={unread} />
             <LanguageSwitcher />
             <ThemeToggle />

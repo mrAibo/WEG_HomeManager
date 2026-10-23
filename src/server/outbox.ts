@@ -41,8 +41,8 @@ export async function deliverEmail(tenantId: string, id: string, actor?: Session
   if (!msg) return "E-Mail nicht gefunden";
   if (msg.status === "GESENDET") return null;
   const cfg = await smtpConfig(tenantId);
-  const messageId = msg.messageId ?? messageIdFor(msg.id, smtpFromAddress(cfg));
   try {
+    const messageId = msg.messageId ?? messageIdFor(msg.id, smtpFromAddress(cfg));
     const attachments: MailAttachment[] = [];
     for (const a of msg.attachments) {
       try {

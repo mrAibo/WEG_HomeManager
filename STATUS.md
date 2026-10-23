@@ -1,13 +1,22 @@
 # WEG HomeManager — STATUS (canonical)
 
-**Verified on:** 2026-10-22, Europe/Berlin
+**Verified on:** 2026-10-23, Europe/Berlin
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
-**Current focus:** E7 user-selected multimodal AI document transcription with explicit per-document consent and separate human review. Provider adapters use existing tenant AI settings; synthetic-only testing with zero paid/external model calls.
+**Current focus:** E8 WEG HomeManager brand, Gmail labeled IMAP + approval-gated SMTP, and Windows launcher independent of Docker. Synthetic-only; no real Gmail credentials or mail.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
-**Branch:** `feature/e7-model-agnostic-recognition` (stacked on single-PC readiness Draft PR #22 and earlier Drafts; no merges).
+**Branch:** `feature/e8-mail-and-branding` (stacked on AI document recognition Draft PR #23; all previous PRs Draft/unmerged).
 **Original AI-first planning PR:** https://github.com/mrAibo/WEG_HomeManager/pull/1 — still open/DRAFT/unmerged at previous check.
 **Upstream source:** `fgilde/hausverwaltung` main, SHA `cb130792cfe40444c35827d059900f3b552a9af4`.
 **Identity:** independent repository, not a GitHub-native fork. HaVeWa imported with a merge that preserves history and AGPLv3 licensing.
+
+## E8 branded UI, Gmail inbound/outbound policy and Docker-free launcher (2026-10-23)
+- Started on clean PR #23 HEAD `ef4eb3073192d1ab924fe61ab48ab3f087ec610a`. Original user-provided PDFs `Aufteilungsplan.PDF` and `Teilungserklärung.PDF` are untracked in repo root and must NEVER be added to Git, GitHub or synthetic testing.
+- Replaced upstream HaVeWa **default displayed** product branding in login/setup/sidebar/About, favicon and old public marketing landing with WEG HomeManager vector artwork and DE/EN/PT labels. Existing tenant-custom logo remains respected. About still credits original HaVeWa source by Florian Gilde and links AGPL repository, without a prominent unrelated product advertisement. No original licensing/attribution removed.
+- Reused existing IMAP/SMTP implementation. New pure `mailbox-safety.ts` enforces explicit Gmail IMAP label; denies wide `INBOX`, `All Mail` and system labels. `imap.gmail.com` credentials still authorize reading broader private mailbox; user MUST consider separate account/OAuth before real use.
+- Gmail SMTP may send from matching `username+weg@gmail.com` when authenticated as `username@gmail.com`, but Gmail must verify/accept alias; `Reply-To` is aligned to configured sender. Other Gmail sender usernames blocked. User-selected draft composition now requires checkbox verifying recipient/content/attachments before scheduling/sending; without checkbox it stays `ENTWURF`.
+- Fixed pre-existing issue: absence of SMTP no longer silently reports success/`GESENDET`; instead outbox gets failure. Other legacy bulk mail/background scheduling paths need separate audit before production.
+- Added `scripts/start-weg-local.ps1` and double-click `start-weg-homemanager.cmd`: launch locally on Windows against any already configured PostgreSQL on localhost:5432 (native Windows service or Docker test container). No Docker dependency in Next.js/Prisma itself; launcher never modifies Windows services, DB credentials, Docker, firewall or users. Native PostgreSQL migration requires a separate fresh install and backup/restore plan.
+- `docs/weg-homemanager/MAILBOX_AND_LOCAL_LAUNCH.md` documents Gmail alias, label, credentials/DSGVO risks, SMTP tests, native Postgres option and manual-only AI mail approvals. Local checks: **330 PASS / 1 SKIP** Vitest (including 17 new policy tests), 8 Node AI tests, TypeScript, scoped ESLint, Next production build + isolated PDF worker bundling **PASS**. Local Chrome authenticated logo/About check **E8_BRANDING_CHROME_PASS**, login/WEG logo/marketing HTTP 200, Windows launcher safely detects existing server. No actual Gmail message, app password, real mail alias verification or production setup attempted.
 
 ## E7 provider-agnostic vision document transcription (2026-10-22)
 - Started from clean Draft PR #22 HEAD `270a24acd59bb14a299902253dcd154dac3855c7`, upstream HaVeWa unchanged. **No mandatory Astra** or new OCR dependency; reuse existing tenant AI config `aiProvider/aiBaseUrl/aiModel/aiApiKey` and installed Anthropic/OpenAI SDKs. Model selected explicitly by tenant ADMIN under Settings > Integrations; no automatic fallback to a different model.
