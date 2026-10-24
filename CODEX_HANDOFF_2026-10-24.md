@@ -1,11 +1,11 @@
 # WEG HomeManager — Codex Handoff
-**Prepared:** 2026-10-24  
-**Primary language:** German UI; communicate with project owner in Russian.  
-**Repository:** https://github.com/mrAibo/WEG_HomeManager  
-**Active branch:** `feature/e10-ai-document-triage`  
-**Verified E10 source HEAD before this handoff:** `5c32d32f3716992ce39cfe969799686d1b8f7a04`  
-**Active review:** [Draft PR #26](https://github.com/mrAibo/WEG_HomeManager/pull/26), base `feature/e9-guided-workflow-meetings` (PR #25)  
-**Source commit CI:** [GitHub Actions run 39927509421](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39927509421) — SUCCESS.  
+**Prepared:** 2026-10-24
+**Primary language:** German UI; communicate with project owner in Russian.
+**Repository:** https://github.com/mrAibo/WEG_HomeManager
+**Active branch:** `feature/e10-ai-document-triage`
+**Verified E10 source HEAD before this handoff:** `5c32d32f3716992ce39cfe969799686d1b8f7a04`
+**Active review:** [Draft PR #26](https://github.com/mrAibo/WEG_HomeManager/pull/26), base `feature/e9-guided-workflow-meetings` (PR #25)
+**Source commit CI:** [GitHub Actions run 39927509421](https://github.com/mrAibo/WEG_HomeManager/actions/runs/39927509421) — SUCCESS.
 **Local Windows checkout:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` on computer **Aibo**.
 
 ## 0 — INSTRUCTIONS TO CODEX: START HERE
