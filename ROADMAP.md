@@ -3,6 +3,10 @@
 **Updated:** 2026-10-22. **Work in progress:** HaVeWa E1 integration exists in separate review branch `integration/havewa-baseline`; source merged locally, 199 upstream + 8 prototype tests pass and Next.js build passes, but lint reports 90 errors / 21 warnings and DB/functional/security audits remain. See `STATUS.md` and `docs/weg-homemanager/BASELINE_VERIFICATION.md`.
 Single source of truth for priorities. See [STATUS](STATUS.md), [HANDOFF](HANDOFF.md), [UX](docs/weg-homemanager/UX_DASHBOARD.md), [marketplaces](docs/weg-homemanager/CONTRACTOR_MARKETPLACES.md).
 
+## Codex transition (2026-10-24)
+- [x] Detailed Git/architecture/privacy/test and next-phase brief in `CODEX_HANDOFF_2026-10-24.md`.
+- [ ] E11 next safe vertical slice: human-edited AI classification, explicit tenant-property assignment and audited, idempotent handoff to the existing Document archive. Preserve original Case/Evidence, test cross-tenant/double-submit/tampering. Draft PR stacked on E10 #26; never merge without review.
+
 ## E10 — Intelligent document handling (2026-10-23)
 - [x] One user-selected AI model call for OCR + untrusted document type classification + document/WEG/sender/date hints + exact evidence quotes + suggested next steps.
 - [x] Whitelisted classes and action identifiers, source-quote validation and two-layer schema enforcement; no automatic DB/financial/email/legal changes.

@@ -1,6 +1,7 @@
 # WEG HomeManager — engineering handoff for next agent
 
-**Date:** 2026-10-23
+**Date:** 2026-10-24
+**Codex-specific entrypoint:** `CODEX_HANDOFF_2026-10-24.md` (current branch/PR, safe test commands, Aibo vs cloud limitations, E11 next slice). Read this first in Codex, then canonical docs.
 **Repo:** https://github.com/mrAibo/WEG_HomeManager
 **Canonical docs:** `AGENTS.md`, `STATUS.md`, `ROADMAP.md`
 **Primary architecture:** existing HaVeWa Next.js/TypeScript/PostgreSQL/Prisma reused; mobile-first Dashboard and future PWA.

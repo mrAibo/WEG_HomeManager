@@ -1,6 +1,7 @@
 # WEG HomeManager — STATUS (canonical)
 
-**Verified on:** 2026-10-23, Europe/Berlin
+**Verified on:** 2026-10-24, Europe/Berlin
+**Codex transition:** see `CODEX_HANDOFF_2026-10-24.md`. E10 source SHA `5c32d32f3716992ce39cfe969799686d1b8f7a04`, Draft PR #26, source Linux CI run 39927509421 SUCCESS. Aibo local login HTTP 200 on 2026-10-24. All real personal PDFs remain untracked/private. Next recommended work: E11 human-approved classification, WEG binding and archive handoff; no real users/external AI, no merge to main.
 **Repository:** https://github.com/mrAibo/WEG_HomeManager
 **Current focus:** E10 one-call multimodal AI document understanding: OCR plus classification, source-linked facts, suggested next steps. User-selected model, explicit per-file consent, strictly read-only suggestions. Synthetic-only; no live mail or external AI.
 **Local working tree:** `C:\Users\crown\Downloads\Projects\WEG_HomeManager` (Aibo, Windows)
