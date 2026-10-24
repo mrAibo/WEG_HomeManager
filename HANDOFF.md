@@ -1,10 +1,19 @@
 # WEG HomeManager — engineering handoff for next agent
 
-**Date:** 2026-10-23
+**Date:** 2026-10-24
+**Codex-specific entrypoint:** `CODEX_HANDOFF_2026-10-24.md` (current branch/PR, safe test commands, Aibo vs cloud limitations, E11 next slice). Read this first in Codex, then canonical docs.
 **Repo:** https://github.com/mrAibo/WEG_HomeManager
 **Canonical docs:** `AGENTS.md`, `STATUS.md`, `ROADMAP.md`
 **Primary architecture:** existing HaVeWa Next.js/TypeScript/PostgreSQL/Prisma reused; mobile-first Dashboard and future PWA.
 **Device/local path:** Aibo / `C:\Users\crown\Downloads\Projects\WEG_HomeManager`
+
+## E10 2026-10-23 — one-call model-agnostic document triage
+- Stacked `feature/e10-ai-document-triage` from E9 PR #25. User wants the AI itself to decide **what the document is** and suggest how to handle it, without asking the admin to pre-classify.
+- `src/lib/ai-document-triage.ts` whitelist and Zod schema, `src/lib/ai-document-recognition.ts` prompts one vision/PDF model call for combined OCR+classification+facts with exact text quotes+safe action suggestions. Reject ungrounded facts and arbitrary action codes/URLs. No default model, no paid calls; relies on user-selected compatible model and explicit original-file consent.
+- `src/server/ai-recognition-workflow.ts` validates output again before write, original SHA and tenant/role/DRAFT lock. Prisma migration `20261023103000_recognition_triage` adds nullable JSONB to `AiRecognition` (68 applied in synthetic DB). UI shows unverified `KI-Einschätzung`, confidence disclaimer, original text proof and fixed navigational next actions (never autonomous DB/email/financial write).
+- Synthetic local DB mock smoke **E7_RECOGNITION_DB_PASS** with triage persistence; authenticated Chrome local mock **E10_TRIAGE_CHROME_PASS** (one model response, category/invoice suggestion, human OCR correction). Full Vitest **337 PASS / 1 SKIP**, TypeScript/scoped ESLint, production Next build PASS, 68 synthetic Prisma migrations applied. No network call outside local stub or user PDF processing. See `docs/weg-homemanager/AI_DOCUMENT_TRIAGE.md`.
+- Remaining future: optional administrator-wide pre-authorized mailbox triage with cost/budget/audit/GDPR gate; human-confirmed property assignment and archive promotion; real anonymized document benchmark. DO NOT silently send documents to a model on selection.
+- Original `Aufteilungsplan.PDF`/`Teilungserklärung.PDF` remain untracked private. Synthetic demo users/passwords stored in parent-level ignored files; avoid exposing or committing credentials.
 
 ## E9 2026-10-23 — guided first-run UI, meeting proposal review & demo
 - Branch `feature/e9-guided-workflow-meetings` from #24 HEAD `06cba0071b60cade42855b4404fa62ba8a205282`, stacked Draft, all predecessors unmerged. Existing untracked `Aufteilungsplan.PDF` / `Teilungserklärung.PDF` in repo ROOT are private and MUST NOT be committed or used for synthetic demo.

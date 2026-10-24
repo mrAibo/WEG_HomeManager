@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { readFile } from "@/lib/storage";
 import { evidenceHash } from "@/lib/ai-evidence-policy";
+import { triageSchema, validateTriageEvidence } from "@/lib/ai-document-triage";
 import { canApproveCopy } from "@/lib/ai-case-policy";
 import { CaseWorkflowError } from "@/lib/ai-case-errors";
 import {
@@ -79,6 +80,14 @@ export async function recognizeSavedEvidence(
     throw new CaseWorkflowError("Originaldatei hat sich während der Erkennung verändert.");
   if (!result.text.trim() || result.text.length > 20000 || result.unclear.length > 30)
     throw new CaseWorkflowError("KI-Antwort ist ungültig oder zu lang.");
+  // Validate here too: injected recognizers or other backends cannot persist
+  // unknown action codes or ungrounded fact quotations.
+  const triage = result.triage ? triageSchema.safeParse(result.triage) : null;
+  if (triage && !triage.success) throw new CaseWorkflowError("KI-Einordnung hat ein ungültiges Format.");
+  if (triage?.success) {
+    try { validateTriageEvidence(triage.data, result.text); }
+    catch { throw new CaseWorkflowError("KI-Angaben sind nicht durch Textstellen belegt."); }
+  }
 
   return prisma.$transaction(async (tx) => {
     // Lock the proposal row via conditional UPDATE, serializing against review.
@@ -95,6 +104,7 @@ export async function recognizeSavedEvidence(
       data: {
         tenantId: actor.tenantId, caseId, evidenceId: row.id, sourceSha256: row.sha256,
         provider, model, rawText: result.text, unclear: result.unclear,
+        triage: triage?.success ? triage.data : undefined,
         createdById: actor.id,
       },
       select: { id: true },

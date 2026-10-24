@@ -18,6 +18,13 @@ vi.mock("openai", () => ({
   },
 }));
 import { parseTranscription, recognizeDocument } from "./ai-document-recognition";
+const validTriage = {
+  category: "INVOICE", confidence: 0.85,
+  explanation: "Rechnung mit Gesamtbetrag", senderHint: null,
+  propertyHint: null, documentDate: null, dueDate: null,
+  facts: [{label:"Gesamtbetrag", value:"47,20 €", evidence:"47,20 €"}],
+  actions: [{code:"VERIFY_INVOICE", explanation:"Betrag im Original prüfen", priority:"NORMAL"}],
+};
 
 const settings = { provider: "openai" as const, apiKey: "synthetic-only", model: "any-vision-model" };
 const jpeg = { name: "scan.jpg", mime: "image/jpeg" as const, bytes: Buffer.from("synthetic-image") };
@@ -37,6 +44,22 @@ describe("provider-independent AI transcription contract", () => {
     expect(() => parseTranscription('rate: 47')).toThrow();
     expect(() => parseTranscription('{"text":"","unclear":[]}')).toThrow();
     expect(() => parseTranscription('{"text":"x","unclear":["x".repeat]}')).toThrow();
+  });
+  it("extracts transcription and structured classification from the SAME model response", async () => {
+    const response=JSON.stringify({
+      text:"Rechnung: Gesamtbetrag 47,20 €", unclear:[], triage:validTriage,
+    });
+    const parsed=parseTranscription(response);
+    expect(parsed.triage?.category).toBe("INVOICE");
+    expect(parsed.triage?.actions[0].code).toBe("VERIFY_INVOICE");
+    mock.openAiChat.mockResolvedValueOnce({choices:[{message:{content:response}}]});
+    const result=await recognizeDocument(jpeg,settings);
+    expect(result.triage?.category).toBe("INVOICE");
+    expect(mock.openAiChat).toHaveBeenCalledTimes(1);
+    expect(mock.openAiResponses).not.toHaveBeenCalled();
+    expect(() => parseTranscription(JSON.stringify({
+      text:"Not a real number", unclear:[], triage:validTriage,
+    }))).toThrow(/nicht belegte Fakten/);
   });
   it("passes user-selected model and base64 image to compatible vision chat", async () => {
     expect(await recognizeDocument(jpeg, settings)).toEqual(parseTranscription(answer));

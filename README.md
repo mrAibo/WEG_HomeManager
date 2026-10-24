@@ -39,6 +39,7 @@ The AI prepares. Authorized humans review, correct and approve. Only then may an
 - [Single-PC Windows deployment checklist](docs/weg-homemanager/SINGLE_PC_INSTALLATION.md)
 - [Gmail WEG mailbox + Windows launcher without Docker](docs/weg-homemanager/MAILBOX_AND_LOCAL_LAUNCH.md)
 - [Guided Dashboard, persistent uploads, sample WEG and meeting proposals](docs/weg-homemanager/UX_GUIDED_E9.md)
+- [AI document understanding: classification, quoted facts and next steps](docs/weg-homemanager/AI_DOCUMENT_TRIAGE.md)
 - **Windows quick start:** double-click `start-weg-homemanager.cmd` while PostgreSQL is running (native Windows service or existing Docker test container).
 
 **UX:** responsive novice-friendly WebGUI in the intended HaVeWa Next.js architecture; PWA as a progressive improvement. No separate desktop/native stack for the first release.

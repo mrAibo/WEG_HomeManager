@@ -107,7 +107,7 @@ export function CaseIntake({ canSave = false }: { canSave?: boolean }) {
         if (documentInput.current) documentInput.current.value = "";
         if (photoInput.current) photoInput.current.value = "";
         setUploadStatus("saved");
-        setMessage("Dokument dauerhaft im Vorgang gespeichert. Es wurde weder an KI gesendet noch veröffentlicht.");
+        setMessage("Dokument dauerhaft im Vorgang gespeichert. Öffnen Sie es für die optionale KI-Analyse: Dokumentart, wichtige Angaben und nächste Schritte. Es wurde noch nichts an KI gesendet.");
       } else {
         setUploadStatus("failed");
         setMessage(`Vorgang wurde erstellt, aber die Datei NICHT gespeichert: ${uploaded.error ?? "Bitte im Vorgang erneut hochladen."}`);
